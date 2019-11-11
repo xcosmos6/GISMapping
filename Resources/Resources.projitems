@@ -1,0 +1,19 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <PropertyGroup>
+    <MSBuildAllProjects>$(MSBuildAllProjects);$(MSBuildThisFileFullPath)</MSBuildAllProjects>
+    <HasSharedItems>true</HasSharedItems>
+    <SharedGUID>8496ace0-4ee1-43cc-a6aa-cfb7e65c55b6</SharedGUID>
+  </PropertyGroup>
+  <PropertyGroup Label="Configuration">
+    <Import_RootNamespace>Resources</Import_RootNamespace>
+  </PropertyGroup>
+  <ItemGroup>
+    <Content Include="$(MSBuildThisFileDirectory)Images\bigMarkerGreen.png" />
+    <Content Include="$(MSBuildThisFileDirectory)Images\bigMarkerRed.png" />
+    <Content Include="$(MSBuildThisFileDirectory)Images\bigMarkerYellow.png" />
+    <Content Include="$(MSBuildThisFileDirectory)Images\open.gif" />
+    <Content Include="$(MSBuildThisFileDirectory)Images\zoomIn.png" />
+    <Content Include="$(MSBuildThisFileDirectory)Images\zoomOut.png" />
+  </ItemGroup>
+</Project>
