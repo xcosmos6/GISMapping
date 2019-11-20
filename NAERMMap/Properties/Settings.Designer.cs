@@ -25,13 +25,37 @@ namespace NAERMMap.Properties {
         
         [global::System.Configuration.UserScopedSettingAttribute()]
         [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
-        [global::System.Configuration.DefaultSettingValueAttribute("GIS File Path")]
-        public string GISFilePath {
+        [global::System.Configuration.DefaultSettingValueAttribute("WECC GIS File Path")]
+        public string WECCGISFilePath {
             get {
-                return ((string)(this["GISFilePath"]));
+                return ((string)(this["WECCGISFilePath"]));
             }
             set {
-                this["GISFilePath"] = value;
+                this["WECCGISFilePath"] = value;
+            }
+        }
+        
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("Platts GIS File Path")]
+        public string PlattsGISFilePath {
+            get {
+                return ((string)(this["PlattsGISFilePath"]));
+            }
+            set {
+                this["PlattsGISFilePath"] = value;
+            }
+        }
+        
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("ENERGYANA GIS File Path")]
+        public string ENERGYANAGISFilePath {
+            get {
+                return ((string)(this["ENERGYANAGISFilePath"]));
+            }
+            set {
+                this["ENERGYANAGISFilePath"] = value;
             }
         }
     }

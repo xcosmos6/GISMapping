@@ -2,8 +2,14 @@
 <SettingsFile xmlns="http://schemas.microsoft.com/VisualStudio/2004/01/settings" CurrentProfile="(Default)" GeneratedClassNamespace="NAERMMap.Properties" GeneratedClassName="Settings">
   <Profiles />
   <Settings>
-    <Setting Name="GISFilePath" Type="System.String" Scope="User">
-      <Value Profile="(Default)">GIS File Path</Value>
+    <Setting Name="WECCGISFilePath" Type="System.String" Scope="User">
+      <Value Profile="(Default)">WECC GIS File Path</Value>
+    </Setting>
+    <Setting Name="PlattsGISFilePath" Type="System.String" Scope="User">
+      <Value Profile="(Default)">Platts GIS File Path</Value>
+    </Setting>
+    <Setting Name="ENERGYANAGISFilePath" Type="System.String" Scope="User">
+      <Value Profile="(Default)">ENERGYANA GIS File Path</Value>
     </Setting>
   </Settings>
 </SettingsFile>

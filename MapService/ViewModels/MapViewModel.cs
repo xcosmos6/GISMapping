@@ -11,7 +11,9 @@ using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
+using System.Windows.Media;
 using System.Windows.Media.Imaging;
+using System.Windows.Shapes;
 using Utilities;
 
 namespace MapService.ViewModels
@@ -49,6 +51,7 @@ namespace MapService.ViewModels
             Console.WriteLine("The Gmap.CacheLocation is {0}", Gmap.CacheLocation);
             Gmap.MouseMove += GMap_MouseMove;
             //Gmap.MouseLeftButtonDown += GMap_MouseLeftButtonDown;
+            Gmap.IgnoreMarkerOnMouseWheel = true;
         }
 
         public void PlotGIS(List<GISRecord> gis)
@@ -67,33 +70,60 @@ namespace MapService.ViewModels
                         //newMarker.Offset = new System.Windows.Point(-12.5, -25);
                         if (source == "WECC")
                         {
-                            newMarker.Shape = new Image
+                            //newMarker.Shape = new Image
+                            //{
+                            //    Width = 25,
+                            //    Height = 25,
+                            //    Source = new BitmapImage(new System.Uri(@"..\MyResources\bigMarkerGreen.png", UriKind.Relative)),
+                            //    ToolTip = g.Description
+                            //};
+                            newMarker.Shape = new Ellipse
                             {
-                                Width = 25,
-                                Height = 25,
-                                Source = new BitmapImage(new System.Uri(@"..\MyResources\bigMarkerGreen.png", UriKind.Relative)),
+                                Width = 15,
+                                Height = 15,
+                                Stroke = Brushes.Green,
+                                Fill = Brushes.Green,
                                 ToolTip = g.Description
                             };
+                            newMarker.Shape.MouseLeftButtonUp += WECCMarker_MouseLeftButtonUp;
                         }
                         if (source == "Platts")
                         {
-                            newMarker.Shape = new Image
+                            //newMarker.Shape = new Image
+                            //{
+                            //    Width = 25,
+                            //    Height = 25,
+                            //    Source = new BitmapImage(new System.Uri(@"..\MyResources\bigMarkerYellow.png", UriKind.Relative)),
+                            //    ToolTip = g.Description
+                            //};
+                            newMarker.Shape = new Ellipse
                             {
-                                Width = 25,
-                                Height = 25,
-                                Source = new BitmapImage(new System.Uri(@"..\MyResources\bigMarkerYellow.png", UriKind.Relative)),
+                                Width = 15,
+                                Height = 15,
+                                Stroke = Brushes.Yellow,
+                                Fill = Brushes.Yellow,
                                 ToolTip = g.Description
                             };
+                            newMarker.Shape.MouseLeftButtonUp += PlattsMarker_MouseLeftButtonUp;
                         }
                         if (source == "ENERGYANA")
                         {
-                            newMarker.Shape = new Image
+                            //newMarker.Shape = new Image
+                            //{
+                            //    Width = 25,
+                            //    Height = 25,
+                            //    Source = new BitmapImage(new System.Uri(@"..\MyResources\bigMarkerRed.png", UriKind.Relative)),
+                            //    ToolTip = g.Description
+                            //};
+                            newMarker.Shape = new Ellipse
                             {
-                                Width = 25,
-                                Height = 25,
-                                Source = new BitmapImage(new System.Uri(@"..\MyResources\bigMarkerRed.png", UriKind.Relative)),
+                                Width = 15,
+                                Height = 15,
+                                Stroke = Brushes.Red,
+                                Fill = Brushes.Red,
                                 ToolTip = g.Description
                             };
+                            newMarker.Shape.MouseLeftButtonUp += ENERGYANAMarker_MouseLeftButtonUp;
                         }
                         //newMarker.Tag = g.Description;
                     }
@@ -102,6 +132,53 @@ namespace MapService.ViewModels
             }
         }
 
+        private void WECCMarker_MouseLeftButtonUp(object sender, MouseButtonEventArgs e)
+        {
+            var s = sender as Ellipse;
+            WECCMarkcerText = s.ToolTip.ToString();
+        }
+
+        private void PlattsMarker_MouseLeftButtonUp(object sender, MouseButtonEventArgs e)
+        {
+            var s = sender as Ellipse;
+            PlattsMarkcerText = s.ToolTip.ToString();
+        }
+
+        private void ENERGYANAMarker_MouseLeftButtonUp(object sender, MouseButtonEventArgs e)
+        {
+            var s = sender as Ellipse;
+            ENERGYANAMarkcerText = s.ToolTip.ToString();
+        }
+        private string _weccMarkcerText;
+        public string WECCMarkcerText 
+        {
+            get { return _weccMarkcerText; }
+            set
+            {
+                _weccMarkcerText = value;
+                OnPropertyChanged();
+            }
+        }
+        private string _plattsMarkcerText;
+        public string PlattsMarkcerText
+        {
+            get { return _plattsMarkcerText; }
+            set
+            {
+                _plattsMarkcerText = value;
+                OnPropertyChanged();
+            }
+        }
+        private string _energyanaMarkcerText;
+        public string ENERGYANAMarkcerText
+        {
+            get { return _energyanaMarkcerText; }
+            set
+            {
+                _energyanaMarkcerText = value;
+                OnPropertyChanged();
+            }
+        }
         private GMapControl _gMap;
         public GMapControl Gmap
         {
@@ -156,5 +233,6 @@ namespace MapService.ViewModels
             CurrentLng = gctl.FromLocalToLatLng((int)ps.X, (int)ps.Y).Lng;
             CurrentLat = gctl.FromLocalToLatLng((int)ps.X, (int)ps.Y).Lat;
         }
+        public PointLatLng FindLocation { get; set; }
     }
 }
