@@ -7,55 +7,69 @@
         xmlns:mpv="clr-namespace:MapService.Views;assembly=MapService"
         xmlns:i="clr-namespace:System.Windows.Interactivity;assembly=System.Windows.Interactivity"
         xmlns:localvm="clr-namespace:NAERMMap.ViewModels"
+        xmlns:msm="clr-namespace:MapService.Models;assembly=MapService"
+        xmlns:msconverter="clr-namespace:MapService.Converters;assembly=MapService"
+        xmlns:converters="clr-namespace:NAERMMap.Converters"
+        xmlns:utility="clr-namespace:Utilities;assembly=Utilities"
         mc:Ignorable="d"
         Title="MainWindow" Height="450" Width="800">
     <Window.Resources>
-        <Style x:Key="ZoomUpButton" TargetType="Button">
-            <Setter Property="Width" Value="23.5" />
-            <Setter Property="Height" Value="25.5" />
-            <Setter Property="Template">
-                <Setter.Value>
-                    <ControlTemplate TargetType="Button">
-                        <Grid Width="23.5" Height="25.5">
-                            <Image Source="/NAERMMap;component/MyResources/zoomIn.png" Stretch="Fill" />
-                            <ContentPresenter HorizontalAlignment="Center" />
-                        </Grid>
-                        <ControlTemplate.Triggers>
-                            <Trigger Property="IsMouseOver" Value="True">
-                                <Setter Property="Effect">
-                                    <Setter.Value>
-                                        <DropShadowEffect ShadowDepth="2" />
-                                    </Setter.Value>
-                                </Setter>
-                            </Trigger>
-                        </ControlTemplate.Triggers>
-                    </ControlTemplate>
-                </Setter.Value>
-            </Setter>
-        </Style>
-        <Style x:Key="ZoomDownButton" TargetType="Button">
-            <Setter Property="Width" Value="23.5" />
-            <Setter Property="Height" Value="25.5" />
-            <Setter Property="Template">
-                <Setter.Value>
-                    <ControlTemplate TargetType="Button">
-                        <Grid Width="23.5" Height="25.5">
-                            <Image Source="/NAERMMap;component/MyResources/zoomOut.png" Stretch="Fill" />
-                            <ContentPresenter HorizontalAlignment="Center" />
-                        </Grid>
-                        <ControlTemplate.Triggers>
-                            <Trigger Property="IsMouseOver" Value="True">
-                                <Setter Property="Effect">
-                                    <Setter.Value>
-                                        <DropShadowEffect ShadowDepth="2" />
-                                    </Setter.Value>
-                                </Setter>
-                            </Trigger>
-                        </ControlTemplate.Triggers>
-                    </ControlTemplate>
-                </Setter.Value>
-            </Setter>
-        </Style>
+        <ResourceDictionary>
+            <converters:PointLatLngToStringConverter x:Key="PointLatLngToStringConverter"/>
+            <converters:DistanceFilterLabelConverter x:Key="DistanceFilterLabelConverter"/>
+            <msconverter:DistanceFilterEnumToIntConverter x:Key="DistanceFilterEnumToIntConverter"/>
+            <ObjectDataProvider MethodName="GetValues" ObjectType="{x:Type utility:EnumerationManager}" x:Key="DistanceFilterEnumValues">
+                <ObjectDataProvider.MethodParameters>
+                    <x:Type TypeName="msm:DistanceFilterEnum"/>
+                </ObjectDataProvider.MethodParameters>
+            </ObjectDataProvider>
+            <Style x:Key="ZoomUpButton" TargetType="Button">
+                <Setter Property="Width" Value="23.5" />
+                <Setter Property="Height" Value="25.5" />
+                <Setter Property="Template">
+                    <Setter.Value>
+                        <ControlTemplate TargetType="Button">
+                            <Grid Width="23.5" Height="25.5">
+                                <Image Source="/NAERMMap;component/MyResources/zoomIn.png" Stretch="Fill" />
+                                <ContentPresenter HorizontalAlignment="Center" />
+                            </Grid>
+                            <ControlTemplate.Triggers>
+                                <Trigger Property="IsMouseOver" Value="True">
+                                    <Setter Property="Effect">
+                                        <Setter.Value>
+                                            <DropShadowEffect ShadowDepth="2" />
+                                        </Setter.Value>
+                                    </Setter>
+                                </Trigger>
+                            </ControlTemplate.Triggers>
+                        </ControlTemplate>
+                    </Setter.Value>
+                </Setter>
+            </Style>
+            <Style x:Key="ZoomDownButton" TargetType="Button">
+                <Setter Property="Width" Value="23.5" />
+                <Setter Property="Height" Value="25.5" />
+                <Setter Property="Template">
+                    <Setter.Value>
+                        <ControlTemplate TargetType="Button">
+                            <Grid Width="23.5" Height="25.5">
+                                <Image Source="/NAERMMap;component/MyResources/zoomOut.png" Stretch="Fill" />
+                                <ContentPresenter HorizontalAlignment="Center" />
+                            </Grid>
+                            <ControlTemplate.Triggers>
+                                <Trigger Property="IsMouseOver" Value="True">
+                                    <Setter Property="Effect">
+                                        <Setter.Value>
+                                            <DropShadowEffect ShadowDepth="2" />
+                                        </Setter.Value>
+                                    </Setter>
+                                </Trigger>
+                            </ControlTemplate.Triggers>
+                        </ControlTemplate>
+                    </Setter.Value>
+                </Setter>
+            </Style>
+        </ResourceDictionary>
     </Window.Resources>
     <Window.DataContext>
         <localvm:MainViewModel/>
@@ -74,27 +88,33 @@
             <Grid.ColumnDefinitions>
                 <ColumnDefinition Width="Auto"/>
                 <ColumnDefinition Width="Auto"/>
+                <ColumnDefinition Width="Auto"/>
                 <ColumnDefinition Width="*"/>
                 <ColumnDefinition Width="Auto"/>
+                <ColumnDefinition Width="Auto"/>
             </Grid.ColumnDefinitions>
-            <Ellipse Width="10" Height="10" Fill="Green" Grid.Column="0" Grid.Row="0" Margin="2"/>
-            <Label Content="WECC GIS: " Margin="2" Grid.Column="1" Grid.Row="0"/>
-            <TextBox Text="{Binding WECCGISFileFullPath}" Margin="2" Grid.Column="2" Grid.Row="0"/>
-            <Button Command="{Binding WECCBrowseGISFiles}" Margin="2,2,25,2" Width="20" Height="20" Grid.Column="3" Grid.Row="0">
+            <CheckBox Grid.Row="0" Grid.Column="0" IsChecked="{Binding MapVM.ShowWECCLocations}" ToolTip="Show WECC Locations" VerticalAlignment="Center" Margin="5,2"/>
+            <Ellipse Width="10" Height="10" Fill="Green" Grid.Column="1" Grid.Row="0" Margin="2"/>
+            <Label Content="WECC GIS: " Margin="2" Grid.Column="2" Grid.Row="0"/>
+            <TextBox Text="{Binding WECCGISFileFullPath}" Margin="2" Grid.Column="3" Grid.Row="0"/>
+            <Button Command="{Binding WECCBrowseGISFiles}" Margin="2,2,2,2" Width="20" Height="20" Grid.Column="4" Grid.Row="0">
                 <Image Source="/NAERMMap;component/MyResources/open.gif"/>
             </Button>
-            <Ellipse Width="10" Height="10" Fill="Yellow" Grid.Column="0" Grid.Row="1" Margin="2"/>
-            <Label Content="Platts GIS: " Margin="2" Grid.Column="1" Grid.Row="1"/>
-            <TextBox Text="{Binding PlattsGISFileFullPath}" Margin="2" Grid.Column="2" Grid.Row="1"/>
-            <Button Command="{Binding PlattsBrowseGISFiles}" Margin="2,2,25,2" Width="20" Height="20" Grid.Column="3" Grid.Row="1">
+            <CheckBox Grid.Row="1" Grid.Column="0" IsChecked="{Binding MapVM.ShowPlattsLocations}" ToolTip="Show Platts Locations" VerticalAlignment="Center" Margin="5,2"/>
+            <Ellipse Width="10" Height="10" Fill="Yellow" Grid.Column="1" Grid.Row="1" Margin="2"/>
+            <Label Content="Platts GIS: " Margin="2" Grid.Column="2" Grid.Row="1"/>
+            <TextBox Text="{Binding PlattsGISFileFullPath}" Margin="2" Grid.Column="3" Grid.Row="1"/>
+            <Button Command="{Binding PlattsBrowseGISFiles}" Margin="2,2,2,2" Width="20" Height="20" Grid.Column="4" Grid.Row="1">
                 <Image Source="/NAERMMap;component/MyResources/open.gif"/>
             </Button>
-            <Ellipse Width="10" Height="10" Fill="Red" Grid.Column="0" Grid.Row="2" Margin="2"/>
-            <Label Content="ENERGYANA GIS: " Margin="2" Grid.Column="1" Grid.Row="2"/>
-            <TextBox Text="{Binding ENERGYANAGISFileFullPath}" Margin="2" Grid.Column="2" Grid.Row="2"/>
-            <Button Command="{Binding ENERGYANABrowseGISFiles}" Margin="2,2,25,2" Width="20" Height="20" Grid.Column="3" Grid.Row="2">
+            <CheckBox Grid.Row="3" Grid.Column="0" IsChecked="{Binding MapVM.ShowEnergyAnalyticsLocations}" ToolTip="Show Energy Analytics Locations" VerticalAlignment="Center" Margin="5,2"/>
+            <Ellipse Width="10" Height="10" Fill="Red" Grid.Column="1" Grid.Row="2" Margin="2"/>
+            <Label Content="ENERGYANA GIS: " Margin="2" Grid.Column="2" Grid.Row="2"/>
+            <TextBox Text="{Binding ENERGYANAGISFileFullPath}" Margin="2" Grid.Column="3" Grid.Row="2"/>
+            <Button Command="{Binding ENERGYANABrowseGISFiles}" Margin="2,2,2,2" Width="20" Height="20" Grid.Column="4" Grid.Row="2">
                 <Image Source="/NAERMMap;component/MyResources/open.gif"/>
             </Button>
+            <Button Grid.Column="5" Grid.Row="0" Grid.RowSpan="3" Content="Compare" Width="60" Height="60" VerticalAlignment="Center" HorizontalAlignment="Left" Command="{Binding CompareGISRecords}" IsEnabled="{Binding HasNewRecords}" Margin="10"/>
         </Grid>
         <Grid Grid.Column="0" Grid.Row="1">
             <Grid.ColumnDefinitions>
@@ -114,11 +134,11 @@
                                 <RowDefinition Height="Auto"/>
                             </Grid.RowDefinitions>
                             <Label Grid.Row="0" Content="Selected WECC Detail: "/>
-                            <TextBox Grid.Row="1" Text="{Binding MapVM.WECCMarkcerText, UpdateSourceTrigger=LostFocus}" Margin="2" Height="200" Width="200" IsReadOnly="True" HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Auto" Background="#c2ffc3"/>
+                            <TextBox Grid.Row="1" Text="{Binding MapVM.WECCMarkerText, UpdateSourceTrigger=LostFocus}" Margin="2" Height="150" Width="200" IsReadOnly="True" HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Auto" Background="#c2ffc3"/>
                             <Label Grid.Row="2" Content="Selected Platts Detail: "/>
-                            <TextBox Grid.Row="3" Text="{Binding MapVM.PlattsMarkcerText, UpdateSourceTrigger=LostFocus}" Margin="2" Height="200" Width="200" IsReadOnly="True" HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Auto" Background="#fbffc2"/>
+                            <TextBox Grid.Row="3" Text="{Binding MapVM.PlattsMarkerText, UpdateSourceTrigger=LostFocus}" Margin="2" Height="100" Width="200" IsReadOnly="True" HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Auto" Background="#fbffc2"/>
                             <Label Grid.Row="4" Content="Selected ENERGYANA Detail: "/>
-                            <TextBox Grid.Row="5" Text="{Binding MapVM.ENERGYANAMarkcerText, UpdateSourceTrigger=LostFocus}" Margin="2" Height="200" Width="200" IsReadOnly="True" HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Auto" Background="#ffc2c2"/>
+                            <TextBox Grid.Row="5" Text="{Binding MapVM.ENERGYANAMarkerText, UpdateSourceTrigger=LostFocus}" Margin="2" Height="200" Width="200" IsReadOnly="True" HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Auto" Background="#ffc2c2"/>
                         </Grid>
                     </GroupBox>
                     <GroupBox Header="Find Location">
@@ -133,10 +153,49 @@
                                 <ColumnDefinition Width="Auto"/>
                             </Grid.ColumnDefinitions>
                                 <Label Grid.Row="0" Grid.Column="0" Content="Latitude: "/>
-                                <TextBox Grid.Row="0" Grid.Column="1" Text="{Binding MapVM.FindLocation.Lat, UpdateSourceTrigger=LostFocus}" Margin="2" Width="130"/>
+                            <TextBox Grid.Row="0" Grid.Column="1" Text="{Binding MapVM.LocationToBeFoundY, UpdateSourceTrigger=LostFocus}" Margin="2" Width="130"/>
                                 <Label Grid.Row="1" Grid.Column="0" Content="Longitude: "/>
-                            <TextBox Grid.Row="1" Grid.Column="1" Text="{Binding MapVM.FindLocation.Lng, UpdateSourceTrigger=LostFocus}" Margin="2" Width="130"/>
-                            <Button Grid.Row="2" Grid.Column="0" Grid.ColumnSpan="2" Content="Find" Margin="5,2"/>
+                            <TextBox Grid.Row="1" Grid.Column="1" Text="{Binding MapVM.LocationToBeFoundX, UpdateSourceTrigger=LostFocus}" Margin="2" Width="130"/>
+                            <Button Grid.Row="2" Grid.Column="0" Grid.ColumnSpan="2" Content="Find" Margin="5,2" Command="{Binding MapVM.FindLocation}"/>
+                        </Grid>
+                    </GroupBox>
+                    <GroupBox Header="Measure Distance" Width="215">
+                        <Grid ScrollViewer.HorizontalScrollBarVisibility="Visible" ScrollViewer.CanContentScroll="True">
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="Auto"/>
+                                <RowDefinition Height="Auto"/>
+                                <RowDefinition Height="Auto"/>
+                            </Grid.RowDefinitions>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="Auto"/>
+                                <ColumnDefinition Width="Auto"/>
+                            </Grid.ColumnDefinitions>
+                            <Label Grid.Row="0" Grid.Column="0" Content="Location 1 " VerticalAlignment="Center"/>
+                            <TextBlock Grid.Row="0" Grid.Column="1" Text="{Binding MapVM.MeasureLocation1, Converter={StaticResource PointLatLngToStringConverter}}" VerticalAlignment="Center"/>
+                            <Label Grid.Row="1" Grid.Column="0" Content="Location 2 " VerticalAlignment="Center"/>
+                            <TextBlock Grid.Row="1" Grid.Column="1" Text="{Binding MapVM.MeasureLocation2, Converter={StaticResource PointLatLngToStringConverter}}" VerticalAlignment="Center"/>
+                            <Label Grid.Row="2" Grid.Column="0" Content="Distance (m): " VerticalAlignment="Center"/>
+                            <TextBlock Grid.Row="2" Grid.Column="1" Text="{Binding MapVM.MeasuredDistance}" Foreground="Red" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                        </Grid>
+                    </GroupBox>
+                    <GroupBox Header="Filter Marked Locations" Width="215">
+                        <Grid>
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="Auto"/>
+                                <RowDefinition Height="Auto"/>
+                                <RowDefinition Height="Auto"/>
+                                <RowDefinition Height="Auto"/>
+                            </Grid.RowDefinitions>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="Auto"/>
+                                <ColumnDefinition Width="Auto"/>
+                            </Grid.ColumnDefinitions>
+                            <RadioButton Content="Show Matched Locations" Grid.Row="0" Grid.Column="0" Grid.ColumnSpan="2" GroupName="MatchedOrNot" IsChecked="{Binding ShowMatchedLocation}"/>
+                            <RadioButton Content="Show Unmatched Locations" Grid.Row="1" Grid.Column="0" Grid.ColumnSpan="2" GroupName="MatchedOrNot"/>
+                            <Label Grid.Row="2" Grid.Column="0" Content="{Binding ShowMatchedLocation, Converter={StaticResource DistanceFilterLabelConverter}}"/>
+                            <ComboBox Grid.Row="2" Grid.Column="1" ItemsSource="{Binding Source={StaticResource DistanceFilterEnumValues}}" Text="{Binding SelectedDistanceFilter, Converter={StaticResource DistanceFilterEnumToIntConverter}}"/>
+                            <!--<Label Grid.Row="3" Grid.Column="0" Content="Compare Data Sources: "/>
+                            <ComboBox Grid.Row="3" Grid.Column="1" ItemsSource="{Binding}"/>-->
                         </Grid>
                     </GroupBox>
                 </StackPanel>
@@ -155,7 +214,7 @@
                     </GroupBox>
                 <GroupBox HorizontalAlignment="Right" Margin="0" VerticalAlignment="Stretch" Header="Zoom" Grid.Row="0" Grid.Column="1">
                     <Grid>
-                        <Button x:Name="czuZoomUp" Style="{StaticResource ZoomUpButton}" HorizontalAlignment="Center" VerticalAlignment="Top" Width="23.5" Height="25.5" Command="{Binding MapVM.ZoomIn}"/>
+                        <Button x:Name="czuZoomUp" Style="{StaticResource ZoomUpButton}" HorizontalAlignment="Center" VerticalAlignment="Top" Width="23" Height="25" Command="{Binding MapVM.ZoomIn}"/>
                         <Slider Orientation="Vertical" HorizontalAlignment="Center" VerticalAlignment="Stretch" Maximum="{Binding MapVM.MaxZoom}" Minimum="{Binding MapVM.MinZoom}" Value="{Binding MapVM.Gmap.Zoom}" TickPlacement="Both" Margin="0,35,0,35" SmallChange="1" x:Name="sliderZoom">
                             <i:Interaction.Triggers>
                                 <i:EventTrigger EventName="ValueChanged">
@@ -171,6 +230,10 @@
                     <TextBlock Text="{Binding MapVM.CurrentLng, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" Margin="2" VerticalAlignment="Center" Width="150"/>
                     <Label Content="Current Latitude: " Margin="2"/>
                     <TextBlock Text="{Binding MapVM.CurrentLat, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" Margin="2" VerticalAlignment="Center"/>
+                    <!--<Label Content="Allowed Distance: " Margin="50,0,0,0"/>
+                    <ComboBox ItemsSource="{Binding}"/>
+                    <Label Content="Compare Data Sources: " Margin="50,0,0,0"/>
+                    <ComboBox ItemsSource="{Binding}"/>-->
                 </StackPanel>
             </Grid>
         </Grid>

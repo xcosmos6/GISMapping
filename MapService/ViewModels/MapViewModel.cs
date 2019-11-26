@@ -1,9 +1,12 @@
 ﻿using ExcelReader;
+using GISData.Model;
 using GMap.NET;
 using GMap.NET.MapProviders;
 using GMap.NET.WindowsPresentation;
+using MapService.Models;
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Text;
@@ -27,6 +30,12 @@ namespace MapService.ViewModels
             ChangeZoom = new RelayCommand(_changeMapZoom);
             ZoomIn = new RelayCommand(_mapZoomIn);
             ZoomOut = new RelayCommand(_mapZoomOut);
+            FindLocation = new RelayCommand(_findLocation);
+            _measureLocation1 = null;
+            _measureLocation2 = null;
+            ShowWECCLocations = false;
+            ShowPlattsLocations = false;
+            ShowEnergyAnalyticsLocations = false;
         }
         public void SetUpGMap()
         {
@@ -52,130 +61,262 @@ namespace MapService.ViewModels
             Gmap.MouseMove += GMap_MouseMove;
             //Gmap.MouseLeftButtonDown += GMap_MouseLeftButtonDown;
             Gmap.IgnoreMarkerOnMouseWheel = true;
+            Gmap.AllowDrop = true;
+            //Gmap.ContextMenu = new ContextMenu();
+            //Gmap.DragButton = MouseButton.Left;
+            Gmap.MouseRightButtonUp += _showContextMenu;
+            _energyAnalyticsMarkerList = new List<GMapMarker>();
+            _weccMarkerList = new List<GMapMarker>();
+            _plattsMarkerList = new List<GMapMarker>();
         }
-
-        public void PlotGIS(List<GISRecord> gis)
+        private LatLngPoint _measureLocation1;
+        public LatLngPoint MeasureLocation1
         {
-            Gmap.Markers.Clear();
-            var gisBySource = gis.GroupBy(x => x.Source);
-            foreach (var item in gisBySource)
+            get { return _measureLocation1; }
+            set
             {
-                var source = item.Key;
-                var gisList = item.ToList();
-                foreach (var g in gisList)
+                _measureLocation1 = value;
+                OnPropertyChanged();
+            }
+        }
+        private LatLngPoint _measureLocation2;
+        public LatLngPoint MeasureLocation2
+        {
+            get { return _measureLocation2; }
+            set
+            {
+                _measureLocation2 = value;
+                OnPropertyChanged();
+            }
+        }
+        private double _measuredDistance;
+        public double MeasuredDistance
+        {
+            get { return _measuredDistance; }
+            set
+            {
+                _measuredDistance = value;
+                OnPropertyChanged();
+                if (value != 0 && MeasureLocation1 != null && MeasureLocation2 != null)
                 {
-                    //var point = Gmap.FromLatLngToLocal(new PointLatLng(g.Latitude, g.Longitude));
-                    var newMarker = new GMapMarker(new PointLatLng(g.Latitude, g.Longitude));
+                    if (_measuredDistanceLine != null)
                     {
-                        //newMarker.Offset = new System.Windows.Point(-12.5, -25);
-                        if (source == "WECC")
-                        {
-                            //newMarker.Shape = new Image
-                            //{
-                            //    Width = 25,
-                            //    Height = 25,
-                            //    Source = new BitmapImage(new System.Uri(@"..\MyResources\bigMarkerGreen.png", UriKind.Relative)),
-                            //    ToolTip = g.Description
-                            //};
-                            newMarker.Shape = new Ellipse
-                            {
-                                Width = 15,
-                                Height = 15,
-                                Stroke = Brushes.Green,
-                                Fill = Brushes.Green,
-                                ToolTip = g.Description
-                            };
-                            newMarker.Shape.MouseLeftButtonUp += WECCMarker_MouseLeftButtonUp;
-                        }
-                        if (source == "Platts")
-                        {
-                            //newMarker.Shape = new Image
-                            //{
-                            //    Width = 25,
-                            //    Height = 25,
-                            //    Source = new BitmapImage(new System.Uri(@"..\MyResources\bigMarkerYellow.png", UriKind.Relative)),
-                            //    ToolTip = g.Description
-                            //};
-                            newMarker.Shape = new Ellipse
-                            {
-                                Width = 15,
-                                Height = 15,
-                                Stroke = Brushes.Yellow,
-                                Fill = Brushes.Yellow,
-                                ToolTip = g.Description
-                            };
-                            newMarker.Shape.MouseLeftButtonUp += PlattsMarker_MouseLeftButtonUp;
-                        }
-                        if (source == "ENERGYANA")
-                        {
-                            //newMarker.Shape = new Image
-                            //{
-                            //    Width = 25,
-                            //    Height = 25,
-                            //    Source = new BitmapImage(new System.Uri(@"..\MyResources\bigMarkerRed.png", UriKind.Relative)),
-                            //    ToolTip = g.Description
-                            //};
-                            newMarker.Shape = new Ellipse
-                            {
-                                Width = 15,
-                                Height = 15,
-                                Stroke = Brushes.Red,
-                                Fill = Brushes.Red,
-                                ToolTip = g.Description
-                            };
-                            newMarker.Shape.MouseLeftButtonUp += ENERGYANAMarker_MouseLeftButtonUp;
-                        }
-                        //newMarker.Tag = g.Description;
+                        Gmap.Markers.Remove(_measuredDistanceLine);
                     }
-                    Gmap.Markers.Add(newMarker);
+                    _drawMeasuredLine();
                 }
             }
         }
-
+        private GMapRoute _measuredDistanceLine;
+        private void _drawMeasuredLine()
+        {
+            var newLine = new List<PointLatLng>();
+            newLine.Add(MeasureLocation1.GetPointLatLng());
+            newLine.Add(MeasureLocation2.GetPointLatLng());
+            var newRoute = new GMapRoute(newLine);
+            newRoute.Shape = new System.Windows.Shapes.Path() { StrokeThickness = 4, ToolTip = MeasuredDistance, Stroke = Brushes.Blue };
+            newRoute.Tag = MeasuredDistance;
+            newRoute.ZIndex = 0;
+            Gmap.Markers.Add(newRoute);
+            _measuredDistanceLine = newRoute;
+            newRoute.Shape.MouseRightButtonUp += _removeMeasuredDistanceLine;
+        }
+        private void _removeMeasuredDistanceLine(object sender, MouseButtonEventArgs e)
+        {
+            Gmap.Markers.Remove(_measuredDistanceLine);
+            MeasureLocation1 = null;
+            MeasureLocation2 = null;
+            MeasuredDistance = 0;
+            _measuredDistanceLine = null;
+        }
+        private void _showContextMenu(object sender, MouseButtonEventArgs e)
+        {
+            if (Keyboard.IsKeyDown(Key.LeftCtrl))
+            {
+                var currentloc = e.GetPosition(Gmap);
+                var position = Gmap.FromLocalToLatLng((int)currentloc.X, (int)currentloc.Y);
+                var cm = new ContextMenu();
+                //cm.Items.Add(new MenuItem("Measure Distance From", new ErrorEventHandler(_addFromLocation)));
+                var m1 = new MenuItem();
+                var m2 = new MenuItem();
+                m1.Header = "Measure Distance Location 1";
+                m1.Click += new RoutedEventHandler((s,ee)=> _add1stLocation(s,ee,new LatLngPoint(position)));
+                cm.Items.Add(m1);
+                if (MeasureLocation1 != null)
+                {
+                    m2.Header = "Measure Distance Location 2";
+                    m2.Click += new RoutedEventHandler((s, ee) => _add2ndLocation(s, ee, new LatLngPoint(position)));
+                    cm.Items.Add(m2);
+                }
+                cm.IsOpen = true;
+            }
+        }
+        private void _add2ndLocation(object sender, RoutedEventArgs e, LatLngPoint lc)
+        {
+            MeasureLocation2 = lc;
+            if (_measureLocation1 != null)
+            {
+                MeasuredDistance = MeasureLocation2.GetDistance(MeasureLocation1);
+            }
+        }
+        private void _add1stLocation(object sender, RoutedEventArgs e, LatLngPoint lc)
+        {
+            MeasureLocation1 = lc;
+            if (_measureLocation2 != null)
+            {
+                MeasuredDistance = MeasureLocation1.GetDistance(MeasureLocation2);
+            }
+        }
+        public void PlotGIS(List<GISRecord> gis)
+        {
+            Gmap.Markers.Clear();
+            //var gisBySource = gis.GroupBy(x => x.Source);
+            foreach (var item in gis)
+            {
+                //var source = item.Key;
+                //var gisList = item.ToList();
+                //foreach (var g in gisList)
+                //{
+                    //var point = Gmap.FromLatLngToLocal(new PointLatLng(g.Latitude, g.Longitude));
+                    var newMarker = new GMapMarker(new PointLatLng(item.Latitude, item.Longitude));
+                    //{
+                if (item.Source == "WECC")
+                {
+                    newMarker.Shape = new Ellipse
+                    {
+                        Width = 15,
+                        Height = 15,
+                        Stroke = Brushes.Green,
+                        Fill = Brushes.Green,
+                        ToolTip = item.Description
+                    };
+                    newMarker.Shape.MouseLeftButtonUp += WECCMarker_MouseLeftButtonUp;
+                    _weccMarkerList.Add(newMarker);
+                    if (ShowWECCLocations)
+                    {
+                        Gmap.Markers.Add(newMarker);
+                    }
+                }
+                if (item.Source == "Platts")
+                {
+                    newMarker.Shape = new Ellipse
+                    {
+                        Width = 15,
+                        Height = 15,
+                        Stroke = Brushes.Yellow,
+                        Fill = Brushes.Yellow,
+                        ToolTip = item.Description
+                    };
+                    newMarker.Shape.MouseLeftButtonUp += PlattsMarker_MouseLeftButtonUp;
+                    _plattsMarkerList.Add(newMarker);
+                    if (ShowPlattsLocations)
+                    {
+                        Gmap.Markers.Add(newMarker);
+                    }
+                }
+                if (item.Source == "ENERGYANA")
+                {
+                    newMarker.Shape = new Ellipse
+                    {
+                        Width = 15,
+                        Height = 15,
+                        Stroke = Brushes.Red,
+                        Fill = Brushes.Red,
+                        ToolTip = item.Description
+                    };
+                    newMarker.Shape.MouseLeftButtonUp += ENERGYANAMarker_MouseLeftButtonUp;
+                    _energyAnalyticsMarkerList.Add(newMarker);
+                    if (ShowEnergyAnalyticsLocations)
+                    {
+                        Gmap.Markers.Add(newMarker);
+                    }
+                }
+                newMarker.Tag = item;
+                    //}
+                //}
+            }
+            _updateMarkersOnMap();
+        }
+        private void _updateMarkersOnMap()
+        {
+            Gmap.Markers.Clear();
+            if (ShowWECCLocations)
+            {
+                foreach (var mkr in _weccMarkerList)
+                {
+                    Gmap.Markers.Add(mkr);
+                }
+                //var a = Gmap.Markers.ToList();
+                //a.AddRange(_weccMarkerList);
+                //Gmap.Markers.Add(a);
+            }
+            if (ShowPlattsLocations)
+            {
+                foreach (var mkr in _plattsMarkerList)
+                {
+                    Gmap.Markers.Add(mkr);
+                }
+                //Gmap.Markers.ToList().AddRange(_plattsMarkerList);
+            }
+            if (ShowEnergyAnalyticsLocations)
+            {
+                foreach (var mkr in _energyAnalyticsMarkerList)
+                {
+                    Gmap.Markers.Add(mkr);
+                }
+                //Gmap.Markers.ToList().AddRange(_energyAnalyticsMarkerList);
+            }
+            if (_foundLocation != null)
+            {
+                Gmap.Markers.Add(_foundLocation);
+            }
+            if (_measuredDistanceLine != null)
+            {
+                Gmap.Markers.Add(_measuredDistanceLine);
+            }
+        }
         private void WECCMarker_MouseLeftButtonUp(object sender, MouseButtonEventArgs e)
         {
             var s = sender as Ellipse;
-            WECCMarkcerText = s.ToolTip.ToString();
+            WECCMarkerText = s.ToolTip.ToString();
         }
-
         private void PlattsMarker_MouseLeftButtonUp(object sender, MouseButtonEventArgs e)
         {
             var s = sender as Ellipse;
-            PlattsMarkcerText = s.ToolTip.ToString();
+            PlattsMarkerText = s.ToolTip.ToString();
         }
-
         private void ENERGYANAMarker_MouseLeftButtonUp(object sender, MouseButtonEventArgs e)
         {
             var s = sender as Ellipse;
-            ENERGYANAMarkcerText = s.ToolTip.ToString();
+            ENERGYANAMarkerText = s.ToolTip.ToString();
         }
-        private string _weccMarkcerText;
-        public string WECCMarkcerText 
+        private string _weccMarcerText;
+        public string WECCMarkerText 
         {
-            get { return _weccMarkcerText; }
+            get { return _weccMarcerText; }
             set
             {
-                _weccMarkcerText = value;
+                _weccMarcerText = value;
                 OnPropertyChanged();
             }
         }
-        private string _plattsMarkcerText;
-        public string PlattsMarkcerText
+        private string _plattsMarkerText;
+        public string PlattsMarkerText
         {
-            get { return _plattsMarkcerText; }
+            get { return _plattsMarkerText; }
             set
             {
-                _plattsMarkcerText = value;
+                _plattsMarkerText = value;
                 OnPropertyChanged();
             }
         }
-        private string _energyanaMarkcerText;
-        public string ENERGYANAMarkcerText
+        private string _energyanaMarkerText;
+        public string ENERGYANAMarkerText
         {
-            get { return _energyanaMarkcerText; }
+            get { return _energyanaMarkerText; }
             set
             {
-                _energyanaMarkcerText = value;
+                _energyanaMarkerText = value;
                 OnPropertyChanged();
             }
         }
@@ -233,6 +374,250 @@ namespace MapService.ViewModels
             CurrentLng = gctl.FromLocalToLatLng((int)ps.X, (int)ps.Y).Lng;
             CurrentLat = gctl.FromLocalToLatLng((int)ps.X, (int)ps.Y).Lat;
         }
-        public PointLatLng FindLocation { get; set; }
+        private double _locationToBeFoundX;
+        public double LocationToBeFoundX
+        {
+            set { _locationToBeFoundX = value;
+                OnPropertyChanged();
+            }
+            get { return _locationToBeFoundX; }
+        }
+        private double _locationToBeFoundY;
+        public double LocationToBeFoundY
+        {
+            set
+            {
+                _locationToBeFoundY = value;
+                OnPropertyChanged();
+            }
+            get { return _locationToBeFoundY; }
+        }
+        public ICommand FindLocation { get; set; }
+        private GMapMarker _foundLocation;
+        private void _findLocation(object obj)
+        {
+            if (_foundLocation != null)
+            {
+                Gmap.Markers.Remove(_foundLocation);
+            }
+            var lc = new PointLatLng(LocationToBeFoundY, LocationToBeFoundX);
+            var newMarker = new GMapMarker(lc);
+            newMarker.Shape = new Image
+            {
+                Width = 25,
+                Height = 25,
+                Source = new BitmapImage(new System.Uri(@"..\MyResources\bigMarkerGreen.png", UriKind.Relative))
+            };
+            newMarker.Tag = "LocationToBeFound";
+            newMarker.Offset = new Point(-12.5, -25);
+            _foundLocation = newMarker;
+            Gmap.Markers.Add(newMarker);
+            Gmap.CenterPosition = lc;
+            newMarker.Shape.MouseRightButtonUp += _removeFoundLocation;
+            newMarker.Shape.MouseLeftButtonDown += Shape_MouseLeftButtonDown;
+            newMarker.Shape.MouseLeftButtonUp += Shape_MouseLeftButtonUp;
+            newMarker.Shape.MouseMove += Shape_MouseMove;
+        }
+        private void Shape_MouseMove(object sender, MouseEventArgs e)
+        {
+            Image i = sender as Image;
+            if (i != null && e.LeftButton == MouseButtonState.Pressed)
+            {
+                var currentloc = e.GetPosition(Gmap);
+                _foundLocation.Position = Gmap.FromLocalToLatLng((int)currentloc.X, (int)currentloc.Y);
+                //DragDrop.DoDragDrop(i, _foundLocation, DragDropEffects.All);
+            }
+        }
+        private void Shape_MouseLeftButtonUp(object sender, MouseButtonEventArgs e)
+        {
+            Image i = sender as Image;
+            if (i.IsMouseCaptured)
+            {
+                Mouse.Capture(null);
+            }
+            var currentloc = e.GetPosition(Gmap);
+            var position = Gmap.FromLocalToLatLng((int)currentloc.X, (int)currentloc.Y);
+            LocationToBeFoundY = position.Lat;
+            LocationToBeFoundX = position.Lng;
+        }
+        private void Shape_MouseLeftButtonDown(object sender, MouseButtonEventArgs e)
+        {
+            Image i = sender as Image;
+            if (!i.IsMouseCaptured)
+            {
+                Mouse.Capture(i);
+            }
+        }
+        private void _removeFoundLocation(object sender, MouseButtonEventArgs e)
+        {
+            Gmap.Markers.Remove(_foundLocation);
+            _foundLocation = null;
+        }
+        private bool _showWECCLocations;
+        public bool ShowWECCLocations
+        {
+            get { return _showWECCLocations; }
+            set
+            {
+                if (_showWECCLocations != value)
+                {
+                    _showWECCLocations = value;
+                    OnPropertyChanged();
+                    //var sw = new Stopwatch();
+                    //sw.Start();
+                    //_updateMarkersOnMap();
+                    //Debug.WriteLine("Time to toggle WECC: {0}", sw.ElapsedMilliseconds);
+                    if (value)
+                    {
+                        var sw = new Stopwatch();
+                        sw.Start();
+                        foreach (var mkr in _weccMarkerList)
+                        {
+                            Gmap.Markers.Add(mkr);
+                        }
+                        //_updateMarkersOnMap();
+                        Debug.WriteLine("Time to add WECC: {0}", sw.ElapsedMilliseconds);
+                    }
+                    else
+                    {
+                        var sw = new Stopwatch();
+                        sw.Start();
+                        //for (int i = Gmap.Markers.Count - 1; i >= 0; i--)
+                        //{
+                        //    if (Gmap.Markers[i].Tag.ToString() == "WECC")
+                        //    {
+                        //        Gmap.Markers.Remove(Gmap.Markers[i]);
+                        //    }
+                        //}
+                        //Gmap.Markers.Clear();
+                        _updateMarkersOnMap();
+                        Debug.WriteLine("Time to delete WECC: {0}", sw.ElapsedMilliseconds);
+                    }
+                }
+            }
+        }
+        private bool _showPlattsLocations;
+        public bool ShowPlattsLocations
+        {
+            get { return _showPlattsLocations; }
+            set
+            {
+                if (_showPlattsLocations != value)
+                {
+                    _showPlattsLocations = value;
+                    OnPropertyChanged();
+                    //var sw = new Stopwatch();
+                    //sw.Start();
+                    //_updateMarkersOnMap();
+                    //Debug.WriteLine("Time to toggle platts: {0}", sw.ElapsedMilliseconds);
+                    if (value)
+                    {
+                        var sw = new Stopwatch();
+                        sw.Start();
+                        foreach (var mkr in _plattsMarkerList)
+                        {
+                            Gmap.Markers.Add(mkr);
+                        }
+                        Debug.WriteLine("Time to add platts: {0}", sw.ElapsedMilliseconds);
+                    }
+                    else
+                    {
+                        var sw = new Stopwatch();
+                        sw.Start();
+                        //for (int i = Gmap.Markers.Count - 1; i >= 0; i--)
+                        //{
+                        //    if (Gmap.Markers[i].Tag.ToString() == "Platts")
+                        //    {
+                        //        Gmap.Markers.Remove(Gmap.Markers[i]);
+                        //    }
+                        //}
+                        //Gmap.Markers.Clear();
+                        _updateMarkersOnMap();
+                        Debug.WriteLine("Time to delete platts: {0}", sw.ElapsedMilliseconds);
+                    }
+                }
+            }
+        }
+        private bool _showEnergyAnalyticsLocations;
+        public bool ShowEnergyAnalyticsLocations
+        {
+            get { return _showEnergyAnalyticsLocations; }
+            set
+            {
+                if (_showEnergyAnalyticsLocations != value)
+                {
+                    _showEnergyAnalyticsLocations = value;
+                    OnPropertyChanged();
+                    //var sw = new Stopwatch();
+                    //sw.Start();
+                    //_updateMarkersOnMap();
+                    //Debug.WriteLine("Time to toggle energy analytics: {0}", sw.ElapsedMilliseconds);
+                    if (value)
+                    {
+                        var sw = new Stopwatch();
+                        sw.Start();
+                        foreach (var mkr in _energyAnalyticsMarkerList)
+                        {
+                            Gmap.Markers.Add(mkr);
+                        }
+                        Debug.WriteLine("Time to add energy analytics: {0}", sw.ElapsedMilliseconds);
+                    }
+                    else
+                    {
+                        var sw = new Stopwatch();
+                        sw.Start();
+                        //for (int i = Gmap.Markers.Count - 1; i >= 0; i--)
+                        //{
+                        //    if (Gmap.Markers[i].Tag.ToString() == "ENERGYANA")
+                        //    {
+                        //        Gmap.Markers.Remove(Gmap.Markers[i]);
+                        //    }
+                        //}
+                        //Gmap.Markers.Clear();
+                        _updateMarkersOnMap();
+                        Debug.WriteLine("Time to delete energy analytics: {0}", sw.ElapsedMilliseconds);
+                    }
+                }
+            }
+        }
+        private List<GMapMarker> _weccMarkerList;
+        private List<GMapMarker> _plattsMarkerList;
+        private List<GMapMarker> _energyAnalyticsMarkerList;
+        public void ClearEnergyAnalyticsMarkers()
+        {
+            _energyAnalyticsMarkerList.Clear();
+            _updateMarkersOnMap();
+            //for (int i = Gmap.Markers.Count - 1; i >=0; i--)
+            //{
+            //    if (Gmap.Markers[i].Tag.ToString() == "ENERGYANA")
+            //    {
+            //        Gmap.Markers.Remove(Gmap.Markers[i]);
+            //    }
+            //}
+        }
+        public void ClearWECCMarkers()
+        {
+            _weccMarkerList.Clear();
+            _updateMarkersOnMap();
+            //for (int i = Gmap.Markers.Count - 1; i >= 0; i--)
+            //{
+            //    if (Gmap.Markers[i].Tag.ToString() == "WECC")
+            //    {
+            //        Gmap.Markers.Remove(Gmap.Markers[i]);
+            //    }
+            //}
+        }
+        public void ClearPlattsMarkers()
+        {
+            _plattsMarkerList.Clear();
+            _updateMarkersOnMap();
+            //for (int i = Gmap.Markers.Count - 1; i >= 0; i--)
+            //{
+            //    if (Gmap.Markers[i].Tag.ToString() == "Platts")
+            //    {
+            //        Gmap.Markers.Remove(Gmap.Markers[i]);
+            //    }
+            //}
+        }
     }
 }

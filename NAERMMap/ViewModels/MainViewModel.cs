@@ -1,4 +1,6 @@
 ﻿using ExcelReader;
+using GISData.Model;
+using MapService.Models;
 using MapService.ViewModels;
 using Microsoft.WindowsAPICodePack.Dialogs;
 using System;
@@ -30,8 +32,13 @@ namespace NAERMMap.ViewModels
             WECCGISRecords = new List<GISRecord>();
             PlattsGISRecords = new List<GISRecord>();
             ENERGYANAGISRecords = new List<GISRecord>();
+            _recordComparer = new GISRecordComparer();
+            _showMatchedLocation = true;
+            //DistanceFilters = new List<int>() { 0, 1, 5, 10, 50, 100, 500, 1000, 5000, 10000, 100000, int.MaxValue};
+            SelectedDistanceFilter = DistanceFilterEnum.Infinity;
+            _hasNewRecords = false;
+            CompareGISRecords = new RelayCommand(_compareGISRecords);
         }
-
         private MapViewModel _mapVM;
         public MapViewModel MapVM
         {
@@ -44,18 +51,19 @@ namespace NAERMMap.ViewModels
         }
         //private XcelReader _xcelReader;
         private CSVReader _csvReader;
+        private GISRecordComparer _recordComparer;
         public List<GISRecord> GISRecords { get; set; }
         public List<GISRecord> WECCGISRecords { get; set; }
         public List<GISRecord> PlattsGISRecords { get; set; }
         public List<GISRecord> ENERGYANAGISRecords { get; set; }
-        private void _updateGISRecords()
-        {
-            GISRecords.Clear();
-            GISRecords.AddRange(ENERGYANAGISRecords);
-            GISRecords.AddRange(PlattsGISRecords);
-            GISRecords.AddRange(WECCGISRecords);
-            MapVM.PlotGIS(GISRecords);
-        }
+        //private void _updateGISRecords()
+        //{
+        //    GISRecords.Clear();
+        //    GISRecords.AddRange(ENERGYANAGISRecords);
+        //    GISRecords.AddRange(PlattsGISRecords);
+        //    GISRecords.AddRange(WECCGISRecords);
+        //    //MapVM.PlotGIS(GISRecords);
+        //}
 
         //to read in WECC GIS
         private string _weccgisFilePath;
@@ -79,20 +87,31 @@ namespace NAERMMap.ViewModels
                 if (_weccgisFileFullPath != value)
                 {
                     _weccgisFileFullPath = value;
+                    HasNewRecords = true;
                     OnPropertyChanged();
+                    MapVM.ClearWECCMarkers();
                     if (File.Exists(_weccgisFileFullPath))
                     {
                         try
                         {
                             WECCGISFilePath = Path.GetDirectoryName(value);
                             WECCGISRecords = _csvReader.Read(WECCGISFileFullPath, "WECC");
-                            _updateGISRecords();
+                            MapVM.PlotGIS(WECCGISRecords);
+                            //_recordComparer.WECCGISRecords = WECCGISRecords;
+                            ////_updateGISRecords();
+                            //MapVM.ClearWECCMarkers();
+                            //MapVM.PlotGIS(WECCGISRecords);
                         }
                         catch (Exception ex)
                         {
                             MessageBox.Show(ex.Message);
                         }
                     }
+                    else
+                    {
+                        WECCGISRecords = new List<GISRecord>();
+                    }
+                    _recordComparer.WECCGISRecords = WECCGISRecords;
                 }
             }
         }
@@ -147,20 +166,28 @@ namespace NAERMMap.ViewModels
                 if (_plattsgisFileFullPath != value)
                 {
                     _plattsgisFileFullPath = value;
+                    HasNewRecords = true;
                     OnPropertyChanged();
+                    MapVM.ClearPlattsMarkers();
                     if (File.Exists(_plattsgisFileFullPath))
                     {
                         try
                         {
                             PlattsGISFilePath = Path.GetDirectoryName(value);
                             PlattsGISRecords = _csvReader.Read(PlattsGISFileFullPath, "Platts");
-                            _updateGISRecords();
+                            //_updateGISRecords();
+                            MapVM.PlotGIS(PlattsGISRecords);
                         }
                         catch (Exception ex)
                         {
                             MessageBox.Show(ex.Message);
                         }
                     }
+                    else
+                    {
+                        PlattsGISRecords = new List<GISRecord>();
+                    }
+                    _recordComparer.PlattsGISRecords = PlattsGISRecords;
                 }
             }
         }
@@ -215,20 +242,28 @@ namespace NAERMMap.ViewModels
                 if (_energyanagisFileFullPath != value)
                 {
                     _energyanagisFileFullPath = value;
+                    HasNewRecords = true;
                     OnPropertyChanged();
+                    MapVM.ClearEnergyAnalyticsMarkers();
                     if (File.Exists(_energyanagisFileFullPath))
                     {
                         try
                         {
                             ENERGYANAGISFilePath = Path.GetDirectoryName(value);
                             ENERGYANAGISRecords = _csvReader.Read(ENERGYANAGISFileFullPath, "ENERGYANA");
-                            _updateGISRecords();
+                            //_updateGISRecords();
+                            MapVM.PlotGIS(ENERGYANAGISRecords);
                         }
                         catch (Exception ex)
                         {
                             MessageBox.Show(ex.Message);
                         }
                     }
+                    else
+                    {
+                        ENERGYANAGISRecords = new List<GISRecord>();
+                    }
+                    _recordComparer.ENERGYANAGISRecords = ENERGYANAGISRecords;
                 }
             }
         }
@@ -260,5 +295,45 @@ namespace NAERMMap.ViewModels
                 }
             }
         }
+        private bool _showMatchedLocation;
+        public bool ShowMatchedLocation 
+        {
+            get { return _showMatchedLocation; }
+            set { _showMatchedLocation = value;
+                OnPropertyChanged();
+            }
+        }
+        //public List<int> DistanceFilters { get; set; }
+        private DistanceFilterEnum _selectedDistanceFilter;
+        public DistanceFilterEnum SelectedDistanceFilter 
+        {
+            get { return _selectedDistanceFilter; }
+            set
+            {
+                _selectedDistanceFilter = value;
+                OnPropertyChanged();
+                if ((ShowMatchedLocation && SelectedDistanceFilter != DistanceFilterEnum.Infinity) || !ShowMatchedLocation && SelectedDistanceFilter != DistanceFilterEnum.Zero)
+                {
+                    var filteredResults = _recordComparer.GetFilteredResults(MapVM.ShowWECCLocations, MapVM.ShowPlattsLocations, MapVM.ShowEnergyAnalyticsLocations, ShowMatchedLocation, value);
+                }
+            }
+        }
+        private bool _hasNewRecords;
+        public bool HasNewRecords 
+        {
+            get { return _hasNewRecords; }
+            set
+            {
+                _hasNewRecords = value;
+                OnPropertyChanged();
+            }
+        }
+        public ICommand CompareGISRecords { get; set; }
+        private void _compareGISRecords(object obj)
+        {
+            HasNewRecords = false;
+            _recordComparer.MatchRecords();
+        }
+
     }
 }

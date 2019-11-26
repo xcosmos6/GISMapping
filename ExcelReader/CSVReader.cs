@@ -1,4 +1,5 @@
-﻿using Microsoft.VisualBasic.FileIO;
+﻿using GISData.Model;
+using Microsoft.VisualBasic.FileIO;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -41,6 +42,22 @@ namespace ExcelReader
                             {
                                 newRecord.Longitude = lng;
                             }
+                        }
+                        if (headers[i] == "BUS-NO" || headers[i] == "busnum") //wecc || energyanalyics from wecc?
+                        {
+                            newRecord.BusNumber = fields[i];
+                        }
+                        if (headers[i] == "NAME" || headers[i] == "Name") //wecc || energyanalyics
+                        {
+                            newRecord.BusName = fields[i].ToLower();
+                        }
+                        if (headers[i] == "SUBSTATION NUMBER" || headers[i] == "busnum") //wecc || energyanalyics from wecc?
+                        {
+                            newRecord.SubstationNumber = fields[i];
+                        }
+                        if (headers[i] == "SUBSTATION NAME" || headers[i] == "SUB_NAME") //wecc || Platts
+                        {
+                            newRecord.SubstationName = fields[i].ToLower();
                         }
                     }
                     rslts.Add(newRecord);
