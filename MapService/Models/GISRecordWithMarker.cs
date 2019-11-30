@@ -1,5 +1,4 @@
-﻿using GISData.Model;
-using GMap.NET.WindowsPresentation;
+﻿using GMap.NET.WindowsPresentation;
 using System;
 using System.Collections.Generic;
 using System.Linq;

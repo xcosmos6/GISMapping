@@ -7,8 +7,8 @@
     <ProjectGuid>{B5A2310B-B289-4CC3-823B-57B551F8F0D4}</ProjectGuid>
     <OutputType>Library</OutputType>
     <AppDesignerFolder>Properties</AppDesignerFolder>
-    <RootNamespace>ExcelReader</RootNamespace>
-    <AssemblyName>ExcelReader</AssemblyName>
+    <RootNamespace>Readers</RootNamespace>
+    <AssemblyName>Readers</AssemblyName>
     <TargetFrameworkVersion>v4.7.2</TargetFrameworkVersion>
     <FileAlignment>512</FileAlignment>
     <Deterministic>true</Deterministic>
@@ -99,9 +99,9 @@
     </COMReference>
   </ItemGroup>
   <ItemGroup>
-    <ProjectReference Include="..\GISData\GISData.csproj">
-      <Project>{71363E4D-F044-4B3C-B1F5-44E0B68211CE}</Project>
-      <Name>GISData</Name>
+    <ProjectReference Include="..\MapService\MapService.csproj">
+      <Project>{c88c5a88-f3d2-498e-94e0-489bb4d54db6}</Project>
+      <Name>MapService</Name>
     </ProjectReference>
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />

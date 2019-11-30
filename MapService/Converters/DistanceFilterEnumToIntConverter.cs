@@ -17,8 +17,8 @@ namespace MapService.Converters
             {
                 case DistanceFilterEnum.Zero:
                     return 0;
-                case DistanceFilterEnum.One:
-                    return 1;
+                //case DistanceFilterEnum.One:
+                //    return 1;
                 case DistanceFilterEnum.Five:
                     return 50;
                 case DistanceFilterEnum.Ten:
@@ -35,8 +35,12 @@ namespace MapService.Converters
                     return 5000;
                 case DistanceFilterEnum.TenThousand:
                     return 10000;
-                case DistanceFilterEnum.Infinity:
-                    return "\u221E";
+                case DistanceFilterEnum.FiftyThousand:
+                    return 50000;
+                case DistanceFilterEnum.OneHundredThousand:
+                    return 100000;
+                //case DistanceFilterEnum.Infinity:
+                //    return "\u221E";
                 default:
                     return 0;
             }
@@ -64,8 +68,12 @@ namespace MapService.Converters
                     return DistanceFilterEnum.FiveThousand;
                 case "10000":
                     return DistanceFilterEnum.TenThousand;
-                case "\u221E":
-                    return DistanceFilterEnum.Infinity;
+                case "50000":
+                    return DistanceFilterEnum.FiftyThousand;
+                case "100000":
+                    return DistanceFilterEnum.OneHundredThousand;
+                //case "\u221E":
+                //    return DistanceFilterEnum.Infinity;
                 default:
                     return DistanceFilterEnum.Zero;
             }

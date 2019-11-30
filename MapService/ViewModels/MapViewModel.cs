@@ -1,6 +1,4 @@
-﻿using ExcelReader;
-using GISData.Model;
-using GMap.NET;
+﻿using GMap.NET;
 using GMap.NET.MapProviders;
 using GMap.NET.WindowsPresentation;
 using MapService.Models;
@@ -36,6 +34,15 @@ namespace MapService.ViewModels
             ShowWECCLocations = false;
             ShowPlattsLocations = false;
             ShowEnergyAnalyticsLocations = false;
+            _filteredEnergyAnalyticsMarkerList = new List<GMapMarker>();
+            _filteredWECCMarkerList = new List<GMapMarker>();
+            _filteredPlattsMarkerList = new List<GMapMarker>();
+            _allWECCMarkerList = new List<GMapMarker>();
+            _allPlattsMarkerList = new List<GMapMarker>();
+            _allEnergyAnalyticsMarkerList = new List<GMapMarker>();
+            _matchedLocations = new List<GMapMarker>();
+            _locationToBeFoundX = -95.7129;
+            _locationToBeFoundY = 37.0902;
         }
         public void SetUpGMap()
         {
@@ -65,9 +72,6 @@ namespace MapService.ViewModels
             //Gmap.ContextMenu = new ContextMenu();
             //Gmap.DragButton = MouseButton.Left;
             Gmap.MouseRightButtonUp += _showContextMenu;
-            _energyAnalyticsMarkerList = new List<GMapMarker>();
-            _weccMarkerList = new List<GMapMarker>();
-            _plattsMarkerList = new List<GMapMarker>();
         }
         private LatLngPoint _measureLocation1;
         public LatLngPoint MeasureLocation1
@@ -169,29 +173,24 @@ namespace MapService.ViewModels
         }
         public void PlotGIS(List<GISRecord> gis)
         {
-            Gmap.Markers.Clear();
-            //var gisBySource = gis.GroupBy(x => x.Source);
+            //Gmap.Markers.Clear();
             foreach (var item in gis)
             {
-                //var source = item.Key;
-                //var gisList = item.ToList();
-                //foreach (var g in gisList)
-                //{
-                    //var point = Gmap.FromLatLngToLocal(new PointLatLng(g.Latitude, g.Longitude));
-                    var newMarker = new GMapMarker(new PointLatLng(item.Latitude, item.Longitude));
-                    //{
+                var newMarker = new GMapMarker(new PointLatLng(item.Location.Lat, item.Location.Lng));
                 if (item.Source == "WECC")
                 {
                     newMarker.Shape = new Ellipse
                     {
                         Width = 15,
                         Height = 15,
-                        Stroke = Brushes.Green,
-                        Fill = Brushes.Green,
-                        ToolTip = item.Description
+                        Stroke = Brushes.LightGreen,
+                        Fill = Brushes.LightGreen,
+                        ToolTip = item.Description,
+                        Tag = item
                     };
                     newMarker.Shape.MouseLeftButtonUp += WECCMarker_MouseLeftButtonUp;
-                    _weccMarkerList.Add(newMarker);
+                    newMarker.Shape.MouseRightButtonUp += Shape_MouseRightButtonUp;
+                    _allWECCMarkerList.Add(newMarker);
                     if (ShowWECCLocations)
                     {
                         Gmap.Markers.Add(newMarker);
@@ -199,16 +198,19 @@ namespace MapService.ViewModels
                 }
                 if (item.Source == "Platts")
                 {
+                    var brush = new SolidColorBrush((Color)ColorConverter.ConvertFromString("#ffff99"));
                     newMarker.Shape = new Ellipse
                     {
                         Width = 15,
                         Height = 15,
-                        Stroke = Brushes.Yellow,
-                        Fill = Brushes.Yellow,
-                        ToolTip = item.Description
+                        Stroke = brush,
+                        Fill = brush,
+                        ToolTip = item.Description,
+                        Tag = item
                     };
                     newMarker.Shape.MouseLeftButtonUp += PlattsMarker_MouseLeftButtonUp;
-                    _plattsMarkerList.Add(newMarker);
+                    newMarker.Shape.MouseRightButtonUp += Shape_MouseRightButtonUp;
+                    _allPlattsMarkerList.Add(newMarker);
                     if (ShowPlattsLocations)
                     {
                         Gmap.Markers.Add(newMarker);
@@ -220,29 +222,118 @@ namespace MapService.ViewModels
                     {
                         Width = 15,
                         Height = 15,
-                        Stroke = Brushes.Red,
-                        Fill = Brushes.Red,
-                        ToolTip = item.Description
+                        Stroke = Brushes.LightPink,
+                        Fill = Brushes.LightPink,
+                        ToolTip = item.Description,
+                        Tag = item
                     };
                     newMarker.Shape.MouseLeftButtonUp += ENERGYANAMarker_MouseLeftButtonUp;
-                    _energyAnalyticsMarkerList.Add(newMarker);
+                    newMarker.Shape.MouseRightButtonUp += Shape_MouseRightButtonUp;
+                    _allEnergyAnalyticsMarkerList.Add(newMarker);
                     if (ShowEnergyAnalyticsLocations)
                     {
                         Gmap.Markers.Add(newMarker);
                     }
                 }
                 newMarker.Tag = item;
-                    //}
-                //}
+                newMarker.ZIndex = 0;
+                newMarker.Offset = new Point(-7.5, -7.5);
+                item.Marker = newMarker;
             }
-            _updateMarkersOnMap();
+            if (gis.Count() > 0)
+            {
+                OnNewMarkersCreated();
+            }
         }
-        private void _updateMarkersOnMap()
+        private List<GMapMarker> _matchedLocations;
+        private void Shape_MouseRightButtonUp(object sender, MouseButtonEventArgs e)
+        {
+
+            if (_matchedLocations != null)
+            {
+                foreach (var mkr in _matchedLocations)
+                {
+                    Gmap.Markers.Remove(mkr);
+                }
+                _matchedLocations.Clear();
+            }
+            var s = sender as Ellipse;
+            var record = s.Tag as GISRecord;
+            foreach (var item in record.MatchingEnergyAnalytics)
+            {
+                var lc = new PointLatLng(item.Item1.Location.Lat, item.Item1.Location.Lng);
+                var newMarker = new GMapMarker(lc);
+                newMarker.Shape = new Image
+                {
+                    Width = 30,
+                    Height = 30,
+                    Source = new BitmapImage(new System.Uri(@"..\MyResources\bigMarkerRed.png", UriKind.Relative)),
+                    ToolTip = item.Item2
+                };
+                newMarker.Tag = "Matched Location";
+                newMarker.Offset = new Point(-15, -30);
+                newMarker.ZIndex = 1000;
+                _matchedLocations.Add(newMarker);
+                Gmap.Markers.Add(newMarker);
+                newMarker.Shape.MouseRightButtonUp += _removeMatchedLocation;
+            }
+            foreach (var item in record.MatchingPlatts)
+            {
+                var lc = new PointLatLng(item.Item1.Location.Lat, item.Item1.Location.Lng);
+                var newMarker = new GMapMarker(lc);
+                newMarker.Shape = new Image
+                {
+                    Width = 30,
+                    Height = 30,
+                    Source = new BitmapImage(new System.Uri(@"..\MyResources\bigMarkerYellow.png", UriKind.Relative)),
+                    ToolTip = item.Item2
+                };
+                newMarker.Tag = "Matched Location";
+                newMarker.Offset = new Point(-15, -30);
+                newMarker.ZIndex = 1000;
+                _matchedLocations.Add(newMarker);
+                Gmap.Markers.Add(newMarker);
+                newMarker.Shape.MouseRightButtonUp += _removeMatchedLocation;
+            }
+            foreach (var item in record.MatchingWECC)
+            {
+                var lc = new PointLatLng(item.Item1.Location.Lat, item.Item1.Location.Lng);
+                var newMarker = new GMapMarker(lc);
+                newMarker.Shape = new Image
+                {
+                    Width = 30,
+                    Height = 30,
+                    Source = new BitmapImage(new System.Uri(@"..\MyResources\bigMarkerGreen.png", UriKind.Relative)),
+                    ToolTip = item.Item2
+                };
+                newMarker.Tag = "Matched Location";
+                newMarker.Offset = new Point(-15, -30);
+                newMarker.ZIndex = 1000;
+                _matchedLocations.Add(newMarker);
+                Gmap.Markers.Add(newMarker);
+                newMarker.Shape.MouseRightButtonUp += _removeMatchedLocation;
+            }
+        }
+
+        private void _removeMatchedLocation(object sender, MouseButtonEventArgs e)
+        {
+
+            if (_matchedLocations != null)
+            {
+                foreach (var mkr in _matchedLocations)
+                {
+                    Gmap.Markers.Remove(mkr);
+                }
+                _matchedLocations.Clear();
+            }
+        }
+
+        public void UpdateMarkersOnMap()
         {
             Gmap.Markers.Clear();
             if (ShowWECCLocations)
             {
-                foreach (var mkr in _weccMarkerList)
+                foreach (var mkr in _filteredWECCMarkerList)
                 {
                     Gmap.Markers.Add(mkr);
                 }
@@ -252,7 +343,7 @@ namespace MapService.ViewModels
             }
             if (ShowPlattsLocations)
             {
-                foreach (var mkr in _plattsMarkerList)
+                foreach (var mkr in _filteredPlattsMarkerList)
                 {
                     Gmap.Markers.Add(mkr);
                 }
@@ -260,7 +351,7 @@ namespace MapService.ViewModels
             }
             if (ShowEnergyAnalyticsLocations)
             {
-                foreach (var mkr in _energyAnalyticsMarkerList)
+                foreach (var mkr in _filteredEnergyAnalyticsMarkerList)
                 {
                     Gmap.Markers.Add(mkr);
                 }
@@ -273,6 +364,13 @@ namespace MapService.ViewModels
             if (_measuredDistanceLine != null)
             {
                 Gmap.Markers.Add(_measuredDistanceLine);
+            }
+            if (_matchedLocations != null)
+            {
+                foreach (var mkr in _matchedLocations)
+                {
+                    Gmap.Markers.Add(mkr);
+                }
             }
         }
         private void WECCMarker_MouseLeftButtonUp(object sender, MouseButtonEventArgs e)
@@ -471,7 +569,7 @@ namespace MapService.ViewModels
                     {
                         var sw = new Stopwatch();
                         sw.Start();
-                        foreach (var mkr in _weccMarkerList)
+                        foreach (var mkr in _filteredWECCMarkerList)
                         {
                             Gmap.Markers.Add(mkr);
                         }
@@ -490,7 +588,7 @@ namespace MapService.ViewModels
                         //    }
                         //}
                         //Gmap.Markers.Clear();
-                        _updateMarkersOnMap();
+                        UpdateMarkersOnMap();
                         Debug.WriteLine("Time to delete WECC: {0}", sw.ElapsedMilliseconds);
                     }
                 }
@@ -514,7 +612,7 @@ namespace MapService.ViewModels
                     {
                         var sw = new Stopwatch();
                         sw.Start();
-                        foreach (var mkr in _plattsMarkerList)
+                        foreach (var mkr in _filteredPlattsMarkerList)
                         {
                             Gmap.Markers.Add(mkr);
                         }
@@ -532,7 +630,7 @@ namespace MapService.ViewModels
                         //    }
                         //}
                         //Gmap.Markers.Clear();
-                        _updateMarkersOnMap();
+                        UpdateMarkersOnMap();
                         Debug.WriteLine("Time to delete platts: {0}", sw.ElapsedMilliseconds);
                     }
                 }
@@ -556,7 +654,7 @@ namespace MapService.ViewModels
                     {
                         var sw = new Stopwatch();
                         sw.Start();
-                        foreach (var mkr in _energyAnalyticsMarkerList)
+                        foreach (var mkr in _filteredEnergyAnalyticsMarkerList)
                         {
                             Gmap.Markers.Add(mkr);
                         }
@@ -574,19 +672,23 @@ namespace MapService.ViewModels
                         //    }
                         //}
                         //Gmap.Markers.Clear();
-                        _updateMarkersOnMap();
+                        UpdateMarkersOnMap();
                         Debug.WriteLine("Time to delete energy analytics: {0}", sw.ElapsedMilliseconds);
                     }
                 }
             }
         }
-        private List<GMapMarker> _weccMarkerList;
-        private List<GMapMarker> _plattsMarkerList;
-        private List<GMapMarker> _energyAnalyticsMarkerList;
+        private List<GMapMarker> _filteredWECCMarkerList;
+        private List<GMapMarker> _filteredPlattsMarkerList;
+        private List<GMapMarker> _filteredEnergyAnalyticsMarkerList;
+        private List<GMapMarker> _allWECCMarkerList;
+        private List<GMapMarker> _allPlattsMarkerList;
+        private List<GMapMarker> _allEnergyAnalyticsMarkerList;
         public void ClearEnergyAnalyticsMarkers()
         {
-            _energyAnalyticsMarkerList.Clear();
-            _updateMarkersOnMap();
+            _filteredEnergyAnalyticsMarkerList.Clear();
+            _allEnergyAnalyticsMarkerList.Clear();
+            UpdateMarkersOnMap();
             //for (int i = Gmap.Markers.Count - 1; i >=0; i--)
             //{
             //    if (Gmap.Markers[i].Tag.ToString() == "ENERGYANA")
@@ -597,8 +699,9 @@ namespace MapService.ViewModels
         }
         public void ClearWECCMarkers()
         {
-            _weccMarkerList.Clear();
-            _updateMarkersOnMap();
+            _filteredWECCMarkerList.Clear();
+            _allWECCMarkerList.Clear();
+            UpdateMarkersOnMap();
             //for (int i = Gmap.Markers.Count - 1; i >= 0; i--)
             //{
             //    if (Gmap.Markers[i].Tag.ToString() == "WECC")
@@ -609,8 +712,9 @@ namespace MapService.ViewModels
         }
         public void ClearPlattsMarkers()
         {
-            _plattsMarkerList.Clear();
-            _updateMarkersOnMap();
+            _filteredPlattsMarkerList.Clear();
+            _allPlattsMarkerList.Clear();
+            UpdateMarkersOnMap();
             //for (int i = Gmap.Markers.Count - 1; i >= 0; i--)
             //{
             //    if (Gmap.Markers[i].Tag.ToString() == "Platts")
@@ -619,5 +723,39 @@ namespace MapService.ViewModels
             //    }
             //}
         }
+        public delegate void MyEvent();
+        public event MyEvent NewMarkersCreated;
+        protected virtual void OnNewMarkersCreated()
+        {
+            NewMarkersCreated?.Invoke();
+        }
+        public void SetFilteredMarkers(List<GMapMarker> weccMarkers = null, List<GMapMarker> plattsMarkers = null, List<GMapMarker> energyAnalyticsMarkers = null)
+        {
+            if (weccMarkers == null)
+            {
+                _filteredWECCMarkerList = _allWECCMarkerList;
+            }
+            else
+            {
+                _filteredWECCMarkerList = weccMarkers;
+            }
+            if (plattsMarkers == null)
+            {
+                _filteredPlattsMarkerList = _allPlattsMarkerList;
+            }
+            else
+            {
+                _filteredPlattsMarkerList = plattsMarkers;
+            }
+            if (energyAnalyticsMarkers == null)
+            {
+                _filteredEnergyAnalyticsMarkerList = _allEnergyAnalyticsMarkerList;
+            }
+            else
+            {
+                _filteredEnergyAnalyticsMarkerList = energyAnalyticsMarkers;
+            }
+        }
+
     }
 }

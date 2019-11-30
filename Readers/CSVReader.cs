@@ -1,4 +1,4 @@
-﻿using GISData.Model;
+﻿using MapService.Models;
 using Microsoft.VisualBasic.FileIO;
 using System;
 using System.Collections.Generic;
@@ -6,7 +6,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace ExcelReader
+namespace Readers
 {
     public class CSVReader
     {
@@ -18,6 +18,7 @@ namespace ExcelReader
                 parser.TextFieldType = FieldType.Delimited;
                 parser.SetDelimiters(",");
                 string[] headers = parser.ReadFields();
+                char[] charsToTrim = { '*', '#', '\'', ' ', '+', '\"' };
                 while (!parser.EndOfData)
                 {
                     //Processing row
@@ -32,7 +33,7 @@ namespace ExcelReader
                             double lat;
                             if (double.TryParse(fields[i], out lat))
                             {
-                                newRecord.Latitude = lat;
+                                newRecord.Location.Lat = lat;
                             }
                         }
                         if (headers[i] == "Longitude")
@@ -40,7 +41,7 @@ namespace ExcelReader
                             double lng;
                             if (double.TryParse(fields[i], out lng))
                             {
-                                newRecord.Longitude = lng;
+                                newRecord.Location.Lng = lng;
                             }
                         }
                         if (headers[i] == "BUS-NO" || headers[i] == "busnum") //wecc || energyanalyics from wecc?
@@ -49,7 +50,17 @@ namespace ExcelReader
                         }
                         if (headers[i] == "NAME" || headers[i] == "Name") //wecc || energyanalyics
                         {
-                            newRecord.BusName = fields[i].ToLower();
+                            var trimmedName = fields[i].ToLower().Trim(charsToTrim).Replace('_', ' ');
+                            if (trimmedName.EndsWith(" (tap)"))
+                            {
+                                trimmedName = trimmedName.Substring(0, trimmedName.LastIndexOf(" (tap)"));
+                            }
+                            if (trimmedName.EndsWith(" tp"))
+                            {
+                                trimmedName = trimmedName.Substring(0, trimmedName.LastIndexOf(" tp"));
+                            }
+                            newRecord.BusName = trimmedName;
+                            newRecord.Information["Trimmed Bus Name"] = trimmedName;
                         }
                         if (headers[i] == "SUBSTATION NUMBER" || headers[i] == "busnum") //wecc || energyanalyics from wecc?
                         {
@@ -57,7 +68,17 @@ namespace ExcelReader
                         }
                         if (headers[i] == "SUBSTATION NAME" || headers[i] == "SUB_NAME") //wecc || Platts
                         {
-                            newRecord.SubstationName = fields[i].ToLower();
+                            var trimmedName = fields[i].ToLower().Trim(charsToTrim).Replace('_', ' ');
+                            if (trimmedName.EndsWith(" (tap)"))
+                            {
+                                trimmedName = trimmedName.Substring(0, trimmedName.LastIndexOf(" (tap)"));
+                            }
+                            if (trimmedName.EndsWith(" tp"))
+                            {
+                                trimmedName = trimmedName.Substring(0, trimmedName.LastIndexOf(" tp"));
+                            }
+                            newRecord.Information["Trimmed Substation Name"] = trimmedName;
+                            newRecord.SubstationName = trimmedName;
                         }
                     }
                     rslts.Add(newRecord);

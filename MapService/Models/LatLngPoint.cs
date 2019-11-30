@@ -20,6 +20,10 @@ namespace MapService.Models
             Lng = position.Lng;
         }
 
+        public LatLngPoint()
+        {
+        }
+
         internal double GetDistance(LatLngPoint point2)
         {
             var geod = new Geodesic(); // WGS84

@@ -1,8 +1,7 @@
-﻿using ExcelReader;
-using GISData.Model;
-using MapService.Models;
+﻿using MapService.Models;
 using MapService.ViewModels;
 using Microsoft.WindowsAPICodePack.Dialogs;
+using Readers;
 using System;
 using System.Collections.Generic;
 using System.IO;
@@ -35,9 +34,13 @@ namespace NAERMMap.ViewModels
             _recordComparer = new GISRecordComparer();
             _showMatchedLocation = true;
             //DistanceFilters = new List<int>() { 0, 1, 5, 10, 50, 100, 500, 1000, 5000, 10000, 100000, int.MaxValue};
-            SelectedDistanceFilter = DistanceFilterEnum.Infinity;
+            SelectedDistanceFilter = DistanceFilterEnum.Zero;
             _hasNewRecords = false;
             CompareGISRecords = new RelayCommand(_compareGISRecords);
+            MarkerFilterChoices = new List<string>() { "Show All GIS Records", "Show Records Have NO Match", "Show Records Have Matchs" };
+            _selectedChoice = "Show All GIS Records";
+            MapVM.NewMarkersCreated += MapVM_NewMarkersCreated;
+            ExportFilteredResults = new RelayCommand(_exportFilteredResults);
         }
         private MapViewModel _mapVM;
         public MapViewModel MapVM
@@ -90,6 +93,7 @@ namespace NAERMMap.ViewModels
                     HasNewRecords = true;
                     OnPropertyChanged();
                     MapVM.ClearWECCMarkers();
+                    _recordComparer.ClearWECCRecords();
                     if (File.Exists(_weccgisFileFullPath))
                     {
                         try
@@ -111,7 +115,14 @@ namespace NAERMMap.ViewModels
                     {
                         WECCGISRecords = new List<GISRecord>();
                     }
-                    _recordComparer.WECCGISRecords = WECCGISRecords;
+                    try
+                    {
+                        _recordComparer.WECCGISRecords = WECCGISRecords;
+                    }
+                    catch (Exception ex)
+                    {
+                        MessageBox.Show("Error reading WECC GIS file: " + value + " . " + ex.Message);
+                    }
                 }
             }
         }
@@ -169,6 +180,7 @@ namespace NAERMMap.ViewModels
                     HasNewRecords = true;
                     OnPropertyChanged();
                     MapVM.ClearPlattsMarkers();
+                    _recordComparer.ClearPlattsRecords();
                     if (File.Exists(_plattsgisFileFullPath))
                     {
                         try
@@ -187,7 +199,14 @@ namespace NAERMMap.ViewModels
                     {
                         PlattsGISRecords = new List<GISRecord>();
                     }
-                    _recordComparer.PlattsGISRecords = PlattsGISRecords;
+                    try
+                    {
+                        _recordComparer.PlattsGISRecords = PlattsGISRecords;
+                    }
+                    catch (Exception ex)
+                    {
+                        MessageBox.Show("Error reading Platts GIS csv file: " + value + " . " + ex.Message);
+                    }
                 }
             }
         }
@@ -245,6 +264,7 @@ namespace NAERMMap.ViewModels
                     HasNewRecords = true;
                     OnPropertyChanged();
                     MapVM.ClearEnergyAnalyticsMarkers();
+                    _recordComparer.ClearEARecords();
                     if (File.Exists(_energyanagisFileFullPath))
                     {
                         try
@@ -263,7 +283,14 @@ namespace NAERMMap.ViewModels
                     {
                         ENERGYANAGISRecords = new List<GISRecord>();
                     }
-                    _recordComparer.ENERGYANAGISRecords = ENERGYANAGISRecords;
+                    try
+                    {
+                        _recordComparer.ENERGYANAGISRecords = ENERGYANAGISRecords;
+                    }
+                    catch (Exception ex)
+                    {
+                        MessageBox.Show("Erro reading energy analytics GIS csv file: " + value + " . " + ex.Message) ;
+                    }
                 }
             }
         }
@@ -310,12 +337,17 @@ namespace NAERMMap.ViewModels
             get { return _selectedDistanceFilter; }
             set
             {
-                _selectedDistanceFilter = value;
-                OnPropertyChanged();
-                if ((ShowMatchedLocation && SelectedDistanceFilter != DistanceFilterEnum.Infinity) || !ShowMatchedLocation && SelectedDistanceFilter != DistanceFilterEnum.Zero)
+                if (_selectedDistanceFilter != value)
                 {
-                    var filteredResults = _recordComparer.GetFilteredResults(MapVM.ShowWECCLocations, MapVM.ShowPlattsLocations, MapVM.ShowEnergyAnalyticsLocations, ShowMatchedLocation, value);
+                    _selectedDistanceFilter = value;
+                    OnPropertyChanged();
+                    _recordComparer.GetMatchedResults(MapVM, _selectedDistanceFilter, _selectedCompareSign);
+                    MapVM.UpdateMarkersOnMap();
                 }
+                //if ((ShowMatchedLocation && SelectedDistanceFilter != DistanceFilterEnum.Infinity) || !ShowMatchedLocation && SelectedDistanceFilter != DistanceFilterEnum.Zero)
+                //{
+                //    var filteredResults = _recordComparer.GetFilteredResults(MapVM.ShowWECCLocations, MapVM.ShowPlattsLocations, MapVM.ShowEnergyAnalyticsLocations, ShowMatchedLocation, value);
+                //}
             }
         }
         private bool _hasNewRecords;
@@ -333,6 +365,77 @@ namespace NAERMMap.ViewModels
         {
             HasNewRecords = false;
             _recordComparer.MatchRecords();
+        }
+        public List<string> MarkerFilterChoices { get; set; }
+        private string _selectedChoice;
+        public string SelectedChoice 
+        {
+            get { return _selectedChoice; }
+            set
+            {
+                if (_selectedChoice != value)
+                {
+                    _selectedChoice = value;
+                    OnPropertyChanged();
+                    _updateMarkersOnMap();
+                }
+            }
+        }
+
+        private void _updateMarkersOnMap()
+        {
+            switch (_selectedChoice)
+            {
+                case "Show All GIS Records":
+                    MapVM.SetFilteredMarkers();
+                    break;
+                case "Show Records Have NO Match":
+                    _recordComparer.GetUnmatchedResults(MapVM);
+                    break;
+                case "Show Records Have Matchs":
+                    _recordComparer.GetMatchedResults(MapVM, _selectedDistanceFilter, _selectedCompareSign);
+                    break;
+                default:
+                    break;
+            }
+            MapVM.UpdateMarkersOnMap();
+        }
+
+        private void MapVM_NewMarkersCreated()
+        {
+            _updateMarkersOnMap();
+        }
+        private CompareOperatorEnum _selectedCompareSign;
+        public CompareOperatorEnum SelectedCompareSign 
+        {
+            get { return _selectedCompareSign; }
+            set
+            {
+                if (_selectedCompareSign != value)
+                {
+                    _selectedCompareSign = value;
+                    OnPropertyChanged();
+                    _recordComparer.GetMatchedResults(MapVM, _selectedDistanceFilter, _selectedCompareSign);
+                    MapVM.UpdateMarkersOnMap();
+                }
+            }
+        }
+        public ICommand ExportFilteredResults { get; set; }
+        private void _exportFilteredResults(object obj)
+        {
+            switch (_selectedChoice)
+            {
+                case "Show All GIS Records":
+                    break;
+                case "Show Records Have NO Match":
+                    //write unmatched records to csv files
+                    break;
+                case "Show Records Have Matchs":
+                    // write matched records to csv files according to SelectedCompareSign and SelectedDistanceFilter
+                    break;
+                default:
+                    break;
+            }
         }
 
     }

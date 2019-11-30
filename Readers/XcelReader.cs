@@ -1,9 +1,9 @@
-﻿using GISData.Model;
+﻿using MapService.Models;
 using System;
 using System.Collections.Generic;
 using Excel = Microsoft.Office.Interop.Excel;
 
-namespace ExcelReader
+namespace Readers
 {
     public class XcelReader
     {
@@ -35,7 +35,7 @@ namespace ExcelReader
                             double lat;
                             if (double.TryParse(value, out lat))
                             {
-                                newRecord.Latitude = lat;
+                                newRecord.Location.Lat = lat;
                             }
                         }
                         if (key == "Longitude")
@@ -43,7 +43,7 @@ namespace ExcelReader
                             double lng;
                             if (double.TryParse(value, out lng))
                             {
-                                newRecord.Longitude = lng;
+                                newRecord.Location.Lng = lng;
                             }
                         }
                     }
