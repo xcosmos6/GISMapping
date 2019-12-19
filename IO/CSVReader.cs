@@ -6,7 +6,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace Readers
+namespace IO
 {
     public class CSVReader
     {
@@ -27,7 +27,7 @@ namespace Readers
                     string[] fields = parser.ReadFields();
                     for (int i = 0; i < fields.Count(); i++)
                     {
-                        newRecord.Information[headers[i]] = fields[i];
+                        newRecord.Information[headers[i]] = fields[i].Contains(",") ? "\"" + fields[i] + "\"" : fields[i];
                         if (headers[i] == "Latitude")
                         {
                             double lat;
@@ -59,8 +59,8 @@ namespace Readers
                             {
                                 trimmedName = trimmedName.Substring(0, trimmedName.LastIndexOf(" tp"));
                             }
-                            newRecord.BusName = trimmedName;
-                            newRecord.Information["Trimmed Bus Name"] = trimmedName;
+                            newRecord.BusName = trimmedName.Contains(",") ? "\"" + trimmedName + "\"" : trimmedName;
+                            newRecord.Information["Trimmed Bus Name"] = newRecord.BusName;
                         }
                         if (headers[i] == "SUBSTATION NUMBER" || headers[i] == "busnum") //wecc || energyanalyics from wecc?
                         {
@@ -77,8 +77,8 @@ namespace Readers
                             {
                                 trimmedName = trimmedName.Substring(0, trimmedName.LastIndexOf(" tp"));
                             }
-                            newRecord.Information["Trimmed Substation Name"] = trimmedName;
-                            newRecord.SubstationName = trimmedName;
+                            newRecord.SubstationName = trimmedName.Contains(",") ? "\"" + trimmedName + "\"" : trimmedName;
+                            newRecord.Information["Trimmed Substation Name"] = newRecord.SubstationName;
                         }
                     }
                     rslts.Add(newRecord);

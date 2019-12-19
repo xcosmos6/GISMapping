@@ -1,9 +1,10 @@
-﻿using MapService.Models;
+﻿using IO;
+using MapService.Models;
 using MapService.ViewModels;
 using Microsoft.WindowsAPICodePack.Dialogs;
-using Readers;
 using System;
 using System.Collections.Generic;
+using System.ComponentModel;
 using System.IO;
 using System.Linq;
 using System.Text;
@@ -41,6 +42,7 @@ namespace NAERMMap.ViewModels
             _selectedChoice = "Show All GIS Records";
             MapVM.NewMarkersCreated += MapVM_NewMarkersCreated;
             ExportFilteredResults = new RelayCommand(_exportFilteredResults);
+            _exportFileLocation = "";
         }
         private MapViewModel _mapVM;
         public MapViewModel MapVM
@@ -144,8 +146,8 @@ namespace NAERMMap.ViewModels
                 fbd.ShowPlacesList = true;
                 fbd.RestoreDirectory = true;
                 fbd.Title = "Please Select WECC CSV data file.";
-                fbd.Filters.Add(new CommonFileDialogFilter("CSV files (*.csv)", "*.csv"));
-                fbd.Filters.Add(new CommonFileDialogFilter("All files (*.*)", "*.*"));
+                fbd.Filters.Add(new CommonFileDialogFilter("CSV files", "*.csv"));
+                fbd.Filters.Add(new CommonFileDialogFilter("All files", "*.*"));
                 CommonFileDialogResult result = fbd.ShowDialog();
 
                 if (result == CommonFileDialogResult.Ok && !string.IsNullOrWhiteSpace(fbd.FileName))
@@ -228,8 +230,8 @@ namespace NAERMMap.ViewModels
                 fbd.ShowPlacesList = true;
                 fbd.RestoreDirectory = true;
                 fbd.Title = "Please Select Platts CSV data file.";
-                fbd.Filters.Add(new CommonFileDialogFilter("CSV files (*.csv)", "*.csv"));
-                fbd.Filters.Add(new CommonFileDialogFilter("All files (*.*)", "*.*"));
+                fbd.Filters.Add(new CommonFileDialogFilter("CSV files", "*.csv"));
+                fbd.Filters.Add(new CommonFileDialogFilter("All files", "*.*"));
                 CommonFileDialogResult result = fbd.ShowDialog();
 
                 if (result == CommonFileDialogResult.Ok && !string.IsNullOrWhiteSpace(fbd.FileName))
@@ -312,8 +314,8 @@ namespace NAERMMap.ViewModels
                 fbd.ShowPlacesList = true;
                 fbd.RestoreDirectory = true;
                 fbd.Title = "Please Select Energy Analytics CSV data file.";
-                fbd.Filters.Add(new CommonFileDialogFilter("CSV files (*.csv)", "*.csv"));
-                fbd.Filters.Add(new CommonFileDialogFilter("All files (*.*)", "*.*"));
+                fbd.Filters.Add(new CommonFileDialogFilter("CSV files", "*.csv"));
+                fbd.Filters.Add(new CommonFileDialogFilter("All files", "*.*"));
                 CommonFileDialogResult result = fbd.ShowDialog();
 
                 if (result == CommonFileDialogResult.Ok && !string.IsNullOrWhiteSpace(fbd.FileName))
@@ -421,22 +423,86 @@ namespace NAERMMap.ViewModels
             }
         }
         public ICommand ExportFilteredResults { get; set; }
+        private string _exportFileLocation;
         private void _exportFilteredResults(object obj)
         {
-            switch (_selectedChoice)
+            using (var fbd = new CommonOpenFileDialog())
             {
-                case "Show All GIS Records":
-                    break;
-                case "Show Records Have NO Match":
-                    //write unmatched records to csv files
-                    break;
-                case "Show Records Have Matchs":
-                    // write matched records to csv files according to SelectedCompareSign and SelectedDistanceFilter
-                    break;
-                default:
-                    break;
+                fbd.InitialDirectory = _exportFileLocation;
+                fbd.IsFolderPicker = true;
+                fbd.AddToMostRecentlyUsedList = true;
+                fbd.AllowNonFileSystemItems = false;
+                fbd.DefaultDirectory = Environment.CurrentDirectory;
+                fbd.EnsureFileExists = true;
+                fbd.EnsurePathExists = true;
+                fbd.EnsureReadOnly = false;
+                fbd.EnsureValidNames = true;
+                fbd.Multiselect = false;
+                fbd.ShowPlacesList = true;
+                fbd.RestoreDirectory = true;
+                fbd.Title = "Please Select Directory to Export Results.";
+                //fbd.Filters.Add(new CommonFileDialogFilter("CSV files", "*.csv"));
+                //fbd.Filters.Add(new CommonFileDialogFilter("All files", "*.*"));
+                CommonFileDialogResult result = fbd.ShowDialog();
+
+                if (result == CommonFileDialogResult.Ok && !string.IsNullOrWhiteSpace(fbd.FileName))
+                {
+                    _exportFileLocation = fbd.FileName;
+                    switch (_selectedChoice)
+                    {
+                        case "Show All GIS Records":
+                            break;
+                        case "Show Records Have NO Match":
+                            //write unmatched records to csv files
+                            _writeUnmatchedRecords();
+                            break;
+                        case "Show Records Have Matchs":
+                            // write matched records to csv files according to SelectedCompareSign and SelectedDistanceFilter
+                            _writeMatchedRecords(SelectedCompareSign, SelectedDistanceFilter);
+                            break;
+                        default:
+                            break;
+                    }
+                }
             }
         }
 
+        private void _writeMatchedRecords(CompareOperatorEnum selectedCompareSign, DistanceFilterEnum selectedDistanceFilter)
+        {
+            var descriptionAttri = selectedDistanceFilter.GetType().GetField(selectedDistanceFilter.ToString()).GetCustomAttributes(typeof(DescriptionAttribute), true).FirstOrDefault() as DescriptionAttribute;
+            var description = descriptionAttri.Description;
+            var records = _recordComparer.GetMatchedRecords(selectedCompareSign, description);
+            var timestamp = DateTime.Now.ToString("_yyyyMMdd_HHmmss");
+            var writer = new GISRecordWriter();
+            foreach (var p in records)
+            {
+                string filename = _exportFileLocation + "\\Matched_" + selectedCompareSign.ToString() + description + "_" + p.Key + timestamp + ".csv";
+                writer.WriteCSVFileMatched(filename, p.Value, selectedCompareSign, description);
+            }
+        }
+
+        private void _writeUnmatchedRecords()
+        {
+            //need to get records first
+            var records = _recordComparer.GetUnmatchedGISRecords();
+            var timestamp = DateTime.Now.ToString("_yyyyMMdd_HHmmss");
+            var writer = new GISRecordWriter();
+            foreach (var p in records)
+            {
+                string filename = _exportFileLocation + "\\Unmatched_" + p.Key + timestamp + ".csv";
+                writer.WriteCSVFilePlain(filename, p.Value);
+            }
+        }
+
+        //private void _writeRecords(Dictionary<string, List<GISRecord>> records, string prefix)
+        //{
+        //    var timestamp = DateTime.Now.ToString("_yyyyMMdd_HHmmss");
+        //    var writer = new GISRecordWriter();
+        //    foreach (var p in records)
+        //    {
+        //        string filename = _exportFileLocation + "\\" + prefix + "_" + p.Key + timestamp + ".csv";
+        //        writer.WriteCSVFile(filename, p.Value);
+        //    }
+        //}
     }
 }

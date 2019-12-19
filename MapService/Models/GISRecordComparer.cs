@@ -35,7 +35,7 @@ namespace MapService.Models
                 if (value != null)
                 {
                     _eaDict = _energyAnalyticsGISRecords.GroupBy(x => x.BusName).ToDictionary(x => x.Key, x => x.ToList());
-                    _eaBusNumberDict = _energyAnalyticsGISRecords.GroupBy(x => x.BusNumber).ToDictionary(x => x.Key, x => x.ToList());
+                    //_eaBusNumberDict = _energyAnalyticsGISRecords.GroupBy(x => x.BusNumber).ToDictionary(x => x.Key, x => x.ToList());
                 }
             }
         }
@@ -145,25 +145,25 @@ namespace MapService.Models
                             }
                         }
                     }
-                    else if (_eaBusNumberDict != null && _eaBusNumberDict.ContainsKey(busNumber))
-                    {
-                        noMatch = false;
-                        var matchedEA = _eaBusNumberDict[busNumber];
-                        if (!_matchedRecordsWECC.Contains(record))
-                        {
-                            _matchedRecordsWECC.Add(record);
-                        }
-                        foreach (var m in matchedEA)
-                        {
-                            var distance = record.Location.GetDistance(m.Location);
-                            record.MatchingEnergyAnalytics.Add(new Tuple<GISRecord, double>(m, distance));
-                            m.MatchingWECC.Add(new Tuple<GISRecord, double>(record, distance));
-                            if (!_matchedRecordsEA.Contains(m))
-                            {
-                                _matchedRecordsEA.Add(m);
-                            }
-                        }
-                    }
+                    //else if (_eaBusNumberDict != null && _eaBusNumberDict.ContainsKey(busNumber))
+                    //{
+                    //    noMatch = false;
+                    //    var matchedEA = _eaBusNumberDict[busNumber];
+                    //    if (!_matchedRecordsWECC.Contains(record))
+                    //    {
+                    //        _matchedRecordsWECC.Add(record);
+                    //    }
+                    //    foreach (var m in matchedEA)
+                    //    {
+                    //        var distance = record.Location.GetDistance(m.Location);
+                    //        record.MatchingEnergyAnalytics.Add(new Tuple<GISRecord, double>(m, distance));
+                    //        m.MatchingWECC.Add(new Tuple<GISRecord, double>(record, distance));
+                    //        if (!_matchedRecordsEA.Contains(m))
+                    //        {
+                    //            _matchedRecordsEA.Add(m);
+                    //        }
+                    //    }
+                    //}
                     if (noMatch)
                     {
                         _recordsWithoutMatchesWECC.Add(record);
@@ -397,6 +397,173 @@ namespace MapService.Models
                 }
             }
             mapVM.SetFilteredMarkers(weccMarkers.Distinct().ToList(), plattsMarkers.Distinct().ToList(), eaMarkers.Distinct().ToList());
+        }
+
+        public Dictionary<string, List<GISRecord>> GetUnmatchedGISRecords()
+        {
+            var result = new Dictionary<string, List<GISRecord>>();
+            if (_recordsWithoutMatchesWECC.Count() > 0)
+            {
+                result["WECC"] = _recordsWithoutMatchesWECC;
+            }
+            if (_recordsWithoutMatchesPlatts.Count() > 0)
+            {
+                result["Platts"] = _recordsWithoutMatchesPlatts;
+            }
+            if (_recordsWithoutMatchesEA.Count() > 0)
+            {
+                result["EnergyAnalytics"] = _recordsWithoutMatchesEA;
+            }
+            return result;
+        }
+
+        public Dictionary<string, List<GISRecord>> GetMatchedRecords(CompareOperatorEnum selectedCompareSign, string description)
+        {
+            int filter;
+            Dictionary<string, List<GISRecord>> result = null;
+            if (int.TryParse(description, out filter))
+            {
+                if (selectedCompareSign == CompareOperatorEnum.GreaterThan)
+                {
+                    result = _getRecordsGreaterThanFilter(filter);
+                }
+                if (selectedCompareSign == CompareOperatorEnum.LessOrEqual)
+                {
+                    result = _getRecordsLessOrEqThanFilter(filter);
+                }
+            }
+            return result;
+        }
+
+        private Dictionary<string, List<GISRecord>> _getRecordsLessOrEqThanFilter(int filter)
+        {
+            var weccGISRecord = new List<GISRecord>();
+            var plattsGISRecord = new List<GISRecord>();
+            var eaGISRecord = new List<GISRecord>();
+            //var addedEARecords = new List<GISRecord>();
+            foreach (var item in _matchedRecordsWECC)
+            {
+                bool itemAdded = false;
+                foreach (var pair in item.MatchingEnergyAnalytics)
+                {
+                    if (pair.Item2 <= filter)
+                    {
+                        if (!itemAdded)
+                        {
+                            weccGISRecord.Add(item);
+                            itemAdded = true;
+                        }
+                        eaGISRecord.Add(pair.Item1);
+                    }
+                }
+                foreach (var pair in item.MatchingPlatts)
+                {
+                    if (pair.Item2 <= filter)
+                    {
+                        if (!itemAdded)
+                        {
+                            weccGISRecord.Add(item);
+                            itemAdded = true;
+                        }
+                        plattsGISRecord.Add(pair.Item1);
+                    }
+                }
+            }
+            foreach (var item in _matchedRecordsPlatts)
+            {
+                bool itemAdded = false;
+                foreach (var pair in item.MatchingEnergyAnalytics)
+                {
+                    if (pair.Item2 <= filter)
+                    {
+                        if (!itemAdded)
+                        {
+                            plattsGISRecord.Add(item);
+                            itemAdded = true;
+                        }
+                        eaGISRecord.Add(pair.Item1);
+                    }
+                }
+            }
+            var result = new Dictionary<string, List<GISRecord>>();
+            if (weccGISRecord.Count() > 0)
+            {
+                result["WECC"] = weccGISRecord.Distinct().ToList();
+            }
+            if (plattsGISRecord.Count() > 0)
+            {
+                result["Platts"] = plattsGISRecord.Distinct().ToList();
+            }
+            if (eaGISRecord.Count() > 0)
+            {
+                result["EnergyAnalytics"] = eaGISRecord.Distinct().ToList();
+            }
+            return result;
+        }
+
+        private Dictionary<string, List<GISRecord>> _getRecordsGreaterThanFilter(int filter)
+        {
+            var weccGISRecord = new List<GISRecord>();
+            var plattsGISRecord = new List<GISRecord>();
+            var eaGISRecord = new List<GISRecord>();
+            foreach (var item in _matchedRecordsWECC)
+            {
+                bool itemAdded = false;
+                foreach (var pair in item.MatchingEnergyAnalytics)
+                {
+                    if (pair.Item2 > filter)
+                    {
+                        if (!itemAdded)
+                        {
+                            weccGISRecord.Add(item);
+                            itemAdded = true;
+                        }
+                        eaGISRecord.Add(pair.Item1);
+                    }
+                }
+                foreach (var pair in item.MatchingPlatts)
+                {
+                    if (pair.Item2 > filter)
+                    {
+                        if (!itemAdded)
+                        {
+                            weccGISRecord.Add(item);
+                            itemAdded = true;
+                        }
+                        plattsGISRecord.Add(pair.Item1);
+                    }
+                }
+            }
+            foreach (var item in _matchedRecordsPlatts)
+            {
+                bool itemAdded = false;
+                foreach (var pair in item.MatchingEnergyAnalytics)
+                {
+                    if (pair.Item2 > filter)
+                    {
+                        if (!itemAdded)
+                        {
+                            plattsGISRecord.Add(item);
+                            itemAdded = true;
+                        }
+                        eaGISRecord.Add(pair.Item1);
+                    }
+                }
+            }
+            var result = new Dictionary<string, List<GISRecord>>();
+            if (weccGISRecord.Count() > 0)
+            {
+                result["WECC"] = weccGISRecord.Distinct().ToList();
+            }
+            if (plattsGISRecord.Count() > 0)
+            {
+                result["Platts"] = plattsGISRecord.Distinct().ToList();
+            }
+            if (eaGISRecord.Count() > 0)
+            {
+                result["EnergyAnalytics"] = eaGISRecord.Distinct().ToList();
+            }
+            return result;
         }
     }
 }

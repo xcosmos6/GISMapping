@@ -3,7 +3,7 @@ using System;
 using System.Collections.Generic;
 using Excel = Microsoft.Office.Interop.Excel;
 
-namespace Readers
+namespace IO
 {
     public class XcelReader
     {

@@ -174,13 +174,13 @@
     </Page>
   </ItemGroup>
   <ItemGroup>
+    <ProjectReference Include="..\IO\IO.csproj">
+      <Project>{B5A2310B-B289-4CC3-823B-57B551F8F0D4}</Project>
+      <Name>IO</Name>
+    </ProjectReference>
     <ProjectReference Include="..\MapService\MapService.csproj">
       <Project>{c88c5a88-f3d2-498e-94e0-489bb4d54db6}</Project>
       <Name>MapService</Name>
-    </ProjectReference>
-    <ProjectReference Include="..\Readers\Readers.csproj">
-      <Project>{b5a2310b-b289-4cc3-823b-57b551f8f0d4}</Project>
-      <Name>Readers</Name>
     </ProjectReference>
     <ProjectReference Include="..\Utilities\Utilities.csproj">
       <Project>{40CD9BBB-CCDC-434F-BE64-359FA5E18795}</Project>

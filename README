@@ -1,0 +1,32 @@
+The input files have to be csv files, not all three files are required, specify any two of the three would work.
+
+
+The header names for the input csv file has some requirements:
+1, the latitude has to be "Latitude"
+2, the longitude has to be "Longitude"
+3, the bus number can be "BUS-NO" or "busnum"
+4, the bus name can be "Name" or "NAME"
+5, the substation number has to be "SUBSTATION NUMBER"
+6, the substation name can be "SUBSTATION NAME"  or "SUB_NAME"
+
+
+The "Compare" button has to be clicked so the filters would work, or only "Show All GIS Records" will show the locations of the coordinates
+
+
+The checkbox before the square label for each input file determines whether the square coordinates marker shows on the map or not.
+
+
+The "Find" button find the input location and label it with a green marker.
+This marker can be dragged around to show the coordinates of the marker.
+Left click on the marker hides it.
+
+
+To measure the distance between two points, hold the left Ctrl key and right click, a context menu shows up, the user need to specify both location 1 and 2.
+Left click on the blue line clears the line, the measured distance and chosen locations. 
+
+
+Right click on the square coordinates marker will flag all matching coordinates.
+Green marker labels WECC coordinates.
+Red marker labels Energy Analytics coordinates.
+Yellow marker labels Platts coordinates.
+Right click the markers clears all markers of the matching coordinates.

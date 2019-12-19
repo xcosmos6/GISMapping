@@ -179,7 +179,7 @@ namespace MapService.ViewModels
                 var newMarker = new GMapMarker(new PointLatLng(item.Location.Lat, item.Location.Lng));
                 if (item.Source == "WECC")
                 {
-                    newMarker.Shape = new Ellipse
+                    newMarker.Shape = new Rectangle
                     {
                         Width = 15,
                         Height = 15,
@@ -199,7 +199,7 @@ namespace MapService.ViewModels
                 if (item.Source == "Platts")
                 {
                     var brush = new SolidColorBrush((Color)ColorConverter.ConvertFromString("#ffff99"));
-                    newMarker.Shape = new Ellipse
+                    newMarker.Shape = new Rectangle
                     {
                         Width = 15,
                         Height = 15,
@@ -218,7 +218,7 @@ namespace MapService.ViewModels
                 }
                 if (item.Source == "ENERGYANA")
                 {
-                    newMarker.Shape = new Ellipse
+                    newMarker.Shape = new Rectangle
                     {
                         Width = 15,
                         Height = 15,
@@ -257,8 +257,37 @@ namespace MapService.ViewModels
                 }
                 _matchedLocations.Clear();
             }
-            var s = sender as Ellipse;
+            var s = sender as Rectangle;
             var record = s.Tag as GISRecord;
+            var mlc = new PointLatLng(record.Location.Lat, record.Location.Lng);
+            var mnewMkr = new GMapMarker(mlc);
+            var markerImage = new BitmapImage();
+            if (record.Source == "WECC")
+            {
+                markerImage = new BitmapImage(new System.Uri(@"..\MyResources\bigMarkerGreen.png", UriKind.Relative));
+            }
+            else if (record.Source == "Platts")
+            {
+                markerImage = new BitmapImage(new System.Uri(@"..\MyResources\bigMarkerYellow.png", UriKind.Relative));
+            }
+            else if (record.Source == "ENERGYANA")
+            {
+                markerImage = new BitmapImage(new System.Uri(@"..\MyResources\bigMarkerRed.png", UriKind.Relative));
+            }
+            mnewMkr.Shape = new Image
+            {
+                Width = 30,
+                Height = 30,
+                Source = markerImage,
+                ToolTip = 0
+            };
+            mnewMkr.Tag = "Matched Location";
+            mnewMkr.Offset = new Point(-15, -30);
+            mnewMkr.ZIndex = 1000;
+            _matchedLocations.Add(mnewMkr);
+            Gmap.Markers.Add(mnewMkr);
+            mnewMkr.Shape.MouseRightButtonUp += _removeMatchedLocation;
+
             foreach (var item in record.MatchingEnergyAnalytics)
             {
                 var lc = new PointLatLng(item.Item1.Location.Lat, item.Item1.Location.Lng);
@@ -375,17 +404,17 @@ namespace MapService.ViewModels
         }
         private void WECCMarker_MouseLeftButtonUp(object sender, MouseButtonEventArgs e)
         {
-            var s = sender as Ellipse;
+            var s = sender as Rectangle;
             WECCMarkerText = s.ToolTip.ToString();
         }
         private void PlattsMarker_MouseLeftButtonUp(object sender, MouseButtonEventArgs e)
         {
-            var s = sender as Ellipse;
+            var s = sender as Rectangle;
             PlattsMarkerText = s.ToolTip.ToString();
         }
         private void ENERGYANAMarker_MouseLeftButtonUp(object sender, MouseButtonEventArgs e)
         {
-            var s = sender as Ellipse;
+            var s = sender as Rectangle;
             ENERGYANAMarkerText = s.ToolTip.ToString();
         }
         private string _weccMarcerText;
